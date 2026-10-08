@@ -27,8 +27,30 @@
         <label class="toggle" title="also list non-asset files (scripts, images, configs)">
           <input type="checkbox" id="showFiles" /> all files
         </label>
-        <label class="toggle" title="check the Allar UE style guide directory rules">
-          <input type="checkbox" id="lint" /> Allar checks
+        <label class="toggle" title="asset naming: a recognised prefix, a PascalCase base name, two-digit variants">
+          naming
+          <select class="btn select" id="namingRules">
+            <option value="off">off</option>
+            <option value="all" selected>all</option>
+            <option value="1.1">1.1 base name</option>
+            <option value="00.1">00.1 characters</option>
+          </select>
+        </label>
+        <label class="toggle" title="content directory structure: folder names, type folders, map and material placement">
+          structure
+          <select class="btn select" id="structureRules">
+            <option value="off">off</option>
+            <option value="all" selected>all</option>
+            <option value="2.1.1">2.1.1 folder case</option>
+            <option value="2.1.2">2.1.2 folder spaces</option>
+            <option value="2.1.3">2.1.3 folder characters</option>
+            <option value="2.2.1">2.2.1 global asset</option>
+            <option value="2.4">2.4 map placement</option>
+            <option value="2.6.1">2.6.1 Assets folder</option>
+            <option value="2.6.2">2.6.2 type folder</option>
+            <option value="2.8">2.8 base material</option>
+            <option value="2.9">2.9 empty folder</option>
+          </select>
         </label>
         <label class="toggle" title="hide rows that have no issues">
           <input type="checkbox" id="issuesOnly" /> issues only
@@ -43,15 +65,17 @@
 
     <p class="stats" id="stats"></p>
 
-    <p class="summary" id="summary" hidden></p>
-
-    <p class="legend" id="legend" hidden></p>
+    <div class="summaries" id="summary" hidden></div>
 
     <p class="banner" id="error" hidden></p>
 
     <main class="wrap">
-      <ul class="tree" id="tree"></ul>
-      <p class="loading" id="loading">scanning&hellip;</p>
+      <div class="pane">
+        <ul class="tree" id="tree"></ul>
+        <p class="loading" id="loading">scanning&hellip;</p>
+      </div>
+
+      <aside class="legend" id="legend" hidden></aside>
     </main>
 
     <script type="module" src="app.js"></script>

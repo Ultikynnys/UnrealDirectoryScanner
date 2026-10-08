@@ -6,6 +6,7 @@
 interface Issue {
   rule: string;
   message: string;
+  category: string;
 }
 
 interface FileEntry {
@@ -34,6 +35,7 @@ interface Violation {
   rule: string;
   message: string;
   path: string;
+  category: string;
 }
 
 interface Payload {
@@ -58,10 +60,11 @@ const rootEl = byId<HTMLParagraphElement>('root');
 const statsEl = byId<HTMLParagraphElement>('stats');
 const filterEl = byId<HTMLInputElement>('filter');
 const filesEl = byId<HTMLInputElement>('showFiles');
-const lintEl = byId<HTMLInputElement>('lint');
+const namingEl = byId<HTMLSelectElement>('namingRules');
+const structureEl = byId<HTMLSelectElement>('structureRules');
 const issuesEl = byId<HTMLInputElement>('issuesOnly');
-const summaryEl = byId<HTMLParagraphElement>('summary');
-const legendEl = byId<HTMLParagraphElement>('legend');
+const summaryEl = byId<HTMLElement>('summary');
+const legendEl = byId<HTMLElement>('legend');
 const pickEl = byId<HTMLButtonElement>('pick');
 const errorEl = byId<HTMLParagraphElement>('error');
 const loadingEl = byId<HTMLParagraphElement>('loading');
@@ -84,7 +87,29 @@ const storageKey = 'unrealDirectoryScanner.path';
 
 let model: Payload | null = null;
 let root = '';
-let lintFlag: boolean | null = null; // null lets the backend decide from the folder it sees
+// "off" stops a category being checked at all; naming a single rule also narrows
+// the tree to that rule. Leaving both on "all" checks everything and filters
+// nothing, which is what "issues only" does on its own.
+function categoryOn(el: HTMLSelectElement): boolean {
+  return el.value !== 'off';
+}
+
+function selectedRules(): Set<string> {
+  const rules = new Set<string>();
+  for (const el of [namingEl, structureEl]) {
+    if (el.value !== 'off' && el.value !== 'all') rules.add(el.value);
+  }
+  return rules;
+}
+
+// True when the node or any descendant reports one of those rules, so a rule
+// filter keeps the path down to every match open.
+function hasRule(node: TreeNode, rules: Set<string>): boolean {
+  return (
+    node.issues.some((issue) => rules.has(issue.rule)) ||
+    node.children.some((child) => hasRule(child, rules))
+  );
+}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -150,8 +175,10 @@ function renderFile(file: FileEntry, depth: number): HTMLLIElement {
   size.className = 'size';
   size.textContent = formatBytes(file.size);
 
-  row.append(guides(depth), spacer, chip, name, size);
+  row.append(guides(depth), spacer, name, size);
   if (file.issues.length > 0) row.append(issueMarker(file.issues, file.issues.length));
+  // appended last so the type lines up in its own right-hand column
+  row.append(chip);
   row.title = `${file.name}\n${file.typeName}\n${formatBytes(file.size)}${file.asset ? ' - asset' : ' - not an asset'}`;
   li.append(row);
   return li;
@@ -216,30 +243,47 @@ function render(): void {
   applyFilter();
 }
 
-/* The rule-by-rule breakdown answers "what is wrong" without opening the tree. */
+/* The rule-by-rule breakdown answers "what is wrong" without opening the tree.
+   Naming and structure get a line each, so one category cannot hide the other. */
 function renderSummary(): void {
   if (!model) return;
-  lintEl.checked = model.lintApplied;
   summaryEl.hidden = false;
+  summaryEl.replaceChildren();
+
   if (!model.lintApplied) {
-    summaryEl.className = 'summary summary--clean';
-    summaryEl.textContent = 'Allar checks off - no Unreal project detected in this folder.';
+    summaryEl.append(
+      summaryLine('Allar checks off - no Unreal project detected in this folder.', true),
+    );
     return;
   }
-  const byRule = new Map<string, number>();
-  for (const violation of model.violations) {
-    byRule.set(violation.rule, (byRule.get(violation.rule) ?? 0) + 1);
+
+  for (const [category, enabled] of [
+    ['naming', categoryOn(namingEl)],
+    ['structure', categoryOn(structureEl)],
+  ] as const) {
+    const byRule = new Map<string, number>();
+    for (const violation of model.violations) {
+      if (violation.category !== category) continue;
+      byRule.set(violation.rule, (byRule.get(violation.rule) ?? 0) + 1);
+    }
+    const total = [...byRule.values()].reduce((sum, count) => sum + count, 0);
+    const parts = [...byRule.entries()]
+      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+      .map(([rule, count]) => `${rule} x${count}`);
+    const body = !enabled
+      ? 'checks off'
+      : total === 0
+        ? 'no violations'
+        : `${plural(total, 'violation')} - ${parts.join(' | ')}`;
+    summaryEl.append(summaryLine(`${category} checks: ${body}`, !enabled || total === 0));
   }
-  const total = model.violations.length;
-  summaryEl.className = total > 0 ? 'summary' : 'summary summary--clean';
-  if (total === 0) {
-    summaryEl.textContent = 'Allar checks: no violations.';
-    return;
-  }
-  const parts = [...byRule.entries()]
-    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
-    .map(([rule, count]) => `${rule} x${count}`);
-  summaryEl.textContent = `Allar checks: ${plural(total, 'violation')} - ${parts.join(' | ')}`;
+}
+
+function summaryLine(text: string, clean: boolean): HTMLParagraphElement {
+  const line = document.createElement('p');
+  line.className = clean ? 'summary summary--clean' : 'summary';
+  line.textContent = text;
+  return line;
 }
 
 /* Type census of the scan, in the same colours as the chips. */
@@ -273,6 +317,7 @@ function renderLegend(): void {
     const label = document.createElement('span');
     label.className = 'legend__label';
     label.textContent = typeName;
+    label.title = `${typeName} - ${count === 1 ? '1 asset' : `${count.toLocaleString()} assets`}`;
     const tally = document.createElement('span');
     tally.className = 'legend__count';
     tally.textContent = count.toLocaleString();
@@ -286,9 +331,11 @@ function renderLegend(): void {
 /* Filtering walks the data, then hides DOM rows, so a folder survives when any
    descendant matches and the path down to it stays open. */
 function filterNode(li: Element, node: TreeNode, query: string): boolean {
-  const only = issuesEl.checked;
+  const rules = selectedRules();
+  const only = issuesEl.checked || rules.size > 0;
   const matches = (name: string): boolean => query.length > 0 && name.toLowerCase().includes(query);
-  let keep = matches(node.name) || (only && node.violations > 0);
+  let keep =
+    matches(node.name) || (only && (rules.size === 0 ? node.violations > 0 : hasRule(node, rules)));
 
   const childLis = [...(li.querySelector('.children')?.children ?? [])];
   let index = 0;
@@ -313,7 +360,7 @@ function applyFilter(): void {
   const query = filterEl.value.trim().toLowerCase();
   for (const li of treeEl.querySelectorAll('li.node')) li.classList.remove('is-hidden');
   const first = treeEl.firstElementChild;
-  if (model && first && (query.length > 0 || issuesEl.checked)) {
+  if (model && first && (query.length > 0 || issuesEl.checked || selectedRules().size > 0)) {
     filterNode(first, model.tree, query);
   }
 }
@@ -331,7 +378,11 @@ function fail(message: string): void {
 
 async function scan(path: string): Promise<void> {
   if (!invoke) return;
-  model = await invoke<Payload>('scan_directory', { path, lint: lintFlag });
+  model = await invoke<Payload>('scan_directory', {
+    path,
+    naming: categoryOn(namingEl),
+    structure: categoryOn(structureEl),
+  });
   root = model.root;
   rootEl.textContent = model.root;
   render();
@@ -396,10 +447,11 @@ darkEl.addEventListener('change', () => {
   localStorage.setItem(themeKey, darkEl.checked ? 'dark' : 'light');
   applyTheme(darkEl.checked);
 });
-lintEl.addEventListener('change', () => {
-  lintFlag = lintEl.checked;
-  void load();
-});
+for (const el of [namingEl, structureEl]) {
+  el.addEventListener('change', () => {
+    void load(); // re-scan too, since "off" stops the category being checked
+  });
+}
 
 void load();
 

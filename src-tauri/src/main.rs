@@ -157,6 +157,7 @@ struct Node {
 struct Issue {
     rule: String,
     message: String,
+    category: &'static str,
 }
 
 #[derive(Serialize)]
@@ -165,6 +166,7 @@ struct Violation {
     rule: String,
     message: String,
     path: String,
+    category: &'static str,
 }
 
 #[derive(Serialize)]
@@ -305,11 +307,27 @@ fn scan_dir(abs: &Path, name: String) -> std::io::Result<Node> {
 }
 
 /* ---- Allar / Gamemakin UE style guide checks -------------------------------
-   Rule ids cite https://github.com/Allar/ue5-style-guide section 2 (Content
-   Directory Structure). Only filesystem-visible rules live here; the guide's
-   Blueprint, mesh, map and texture chapters need the editor and are out of
-   scope. Folders under Developers/ or Python/ are exempt: 2.3 makes the former
-   a sandbox, and the latter is UE's Python folder rather than project content. */
+   Rule ids cite https://github.com/Allar/ue5-style-guide. Section 1 is asset
+   naming and section 2 is Content directory structure, so the leading number is
+   also the rule's category. Only filesystem-visible rules live here; the
+   guide's Blueprint, mesh, map and texture chapters need the editor and are out
+   of scope. Folders under Developers/ or Python/ are exempt: 2.3 makes the
+   former a sandbox, and the latter is UE's Python folder rather than project
+   content. */
+
+#[derive(Clone, Copy)]
+struct Cats {
+    naming: bool,
+    structure: bool,
+}
+
+fn rule_category(rule: &str) -> &'static str {
+    if rule.starts_with('2') {
+        "structure"
+    } else {
+        "naming"
+    }
+}
 
 struct Ctx {
     rel: String,
@@ -348,6 +366,62 @@ fn folder_name_issue(name: &str) -> Option<(&'static str, String)> {
     }
 }
 
+// The longest Allar 1.2 prefix the name begins with, if any.
+fn known_prefix(base: &str) -> Option<&'static str> {
+    ASSET_KINDS
+        .iter()
+        .map(|(prefix, ..)| *prefix)
+        .filter(|prefix| base.starts_with(prefix))
+        .max_by_key(|prefix| prefix.len())
+}
+
+// 1.1, the base asset name pattern Prefix_BaseAssetName_Variant_Suffix, using
+// only letters, digits and underscore. The prefix is not yet checked against the
+// asset's real class; that needs the class read from the package header.
+fn naming_issues(name: &str, rel: &str) -> Vec<(&'static str, String)> {
+    let base = base_name(name);
+    let mut found = Vec::new();
+
+    if let Some(bad) = base.chars().find(|c| !c.is_ascii_alphanumeric() && *c != '_') {
+        found.push((
+            "00.1",
+            format!("\"{rel}\" contains '{bad}'; only letters, digits and underscore are allowed."),
+        ));
+    }
+
+    let prefix = known_prefix(base);
+    if prefix.is_none() && !is_umap(name) {
+        found.push((
+            "1.1",
+            format!("\"{rel}\" does not start with a recognised asset-type prefix."),
+        ));
+    }
+
+    let rest = match prefix {
+        Some(p) => &base[p.len()..],
+        None => base,
+    };
+    for segment in rest.split('_').filter(|s| !s.is_empty()) {
+        if !segment.chars().all(|c| c.is_ascii_alphanumeric()) {
+            continue; // already reported by the character rule above
+        }
+        if segment.chars().all(|c| c.is_ascii_digit()) {
+            if segment.len() != 2 {
+                found.push((
+                    "1.1",
+                    format!(
+                        "\"{rel}\" uses the variant \"{segment}\"; variants are two digits, like _01."
+                    ),
+                ));
+            }
+        } else if !is_pascal_case(segment) {
+            found.push(("1.1", format!("\"{rel}\" has \"{segment}\", which is not PascalCase.")));
+        }
+    }
+
+    found
+}
+
 fn flag(
     out: &mut Vec<Violation>,
     issues: &mut Vec<Issue>,
@@ -355,18 +429,21 @@ fn flag(
     message: String,
     path: &str,
 ) {
+    let category = rule_category(rule);
     issues.push(Issue {
         rule: rule.to_string(),
         message: message.clone(),
+        category,
     });
     out.push(Violation {
         rule: rule.to_string(),
         message,
         path: path.to_string(),
+        category,
     });
 }
 
-fn lint_dir(node: &mut Node, ctx: &Ctx, out: &mut Vec<Violation>) -> u64 {
+fn lint_dir(node: &mut Node, ctx: &Ctx, cats: Cats, out: &mut Vec<Violation>) -> u64 {
     let root = ctx.rel.is_empty();
     let exempt = ctx.exempt || node.name == "Developers" || node.name == "Python";
     let in_maps = ctx.under_maps || node.name == "Maps";
@@ -375,7 +452,7 @@ fn lint_dir(node: &mut Node, ctx: &Ctx, out: &mut Vec<Violation>) -> u64 {
 
     let mut issues: Vec<Issue> = Vec::new();
 
-    if !exempt {
+    if !exempt && cats.structure {
         // The scanned root's own name is the user's choice, not a project folder.
         if !root {
             if let Some((rule, message)) = folder_name_issue(&node.name) {
@@ -412,6 +489,9 @@ fn lint_dir(node: &mut Node, ctx: &Ctx, out: &mut Vec<Violation>) -> u64 {
             }
         }
 
+    }
+
+    if !exempt {
         for file in &mut node.files {
             let rel = if root {
                 file.name.clone()
@@ -422,20 +502,25 @@ fn lint_dir(node: &mut Node, ctx: &Ctx, out: &mut Vec<Violation>) -> u64 {
                 continue;
             }
             let mut found: Vec<(&'static str, String)> = Vec::new();
-            if in_content {
-                found.push((
-                    "2.2.1",
-                    format!("\"{rel}\" is a global asset; project assets belong in Content/<Project>."),
-                ));
+            if cats.structure {
+                if in_content {
+                    found.push((
+                        "2.2.1",
+                        format!("\"{rel}\" is a global asset; project assets belong in Content/<Project>."),
+                    ));
+                }
+                if is_umap(&file.name) && !in_maps {
+                    found.push(("2.4", format!("\"{rel}\" is a map outside a Maps folder.")));
+                }
+                if file.name.starts_with("M_") && !in_matlib {
+                    found.push((
+                        "2.8",
+                        format!("\"{rel}\" is a base material outside MaterialLibrary."),
+                    ));
+                }
             }
-            if is_umap(&file.name) && !in_maps {
-                found.push(("2.4", format!("\"{rel}\" is a map outside a Maps folder.")));
-            }
-            if file.name.starts_with("M_") && !in_matlib {
-                found.push((
-                    "2.8",
-                    format!("\"{rel}\" is a base material outside MaterialLibrary."),
-                ));
+            if cats.naming {
+                found.extend(naming_issues(&file.name, &rel));
             }
             for (rule, message) in found {
                 flag(out, &mut file.issues, rule, message, &rel);
@@ -457,7 +542,7 @@ fn lint_dir(node: &mut Node, ctx: &Ctx, out: &mut Vec<Violation>) -> u64 {
             under_maps: in_maps,
             under_matlib: in_matlib,
         };
-        nested += lint_dir(child, &child_ctx, out);
+        nested += lint_dir(child, &child_ctx, cats, out);
     }
 
     node.issues = issues;
@@ -485,7 +570,11 @@ fn looks_like_unreal(root: &Path, name: &str) -> bool {
 }
 
 #[tauri::command]
-fn scan_directory(path: String, lint: Option<bool>) -> Result<Payload, String> {
+fn scan_directory(
+    path: String,
+    structure: Option<bool>,
+    naming: Option<bool>,
+) -> Result<Payload, String> {
     let root = PathBuf::from(&path);
     if !root.is_dir() {
         return Err(format!("not a directory: {path}"));
@@ -497,7 +586,11 @@ fn scan_directory(path: String, lint: Option<bool>) -> Result<Payload, String> {
         .unwrap_or_else(|| root.display().to_string());
 
     let looks_unreal = looks_like_unreal(&root, &name);
-    let lint_applied = lint.unwrap_or(looks_unreal);
+    let cats = Cats {
+        naming: naming.unwrap_or(looks_unreal),
+        structure: structure.unwrap_or(looks_unreal),
+    };
+    let lint_applied = cats.naming || cats.structure;
 
     let mut tree = scan_dir(&root, name).map_err(|e| format!("could not read {path}: {e}"))?;
 
@@ -509,7 +602,7 @@ fn scan_directory(path: String, lint: Option<bool>) -> Result<Payload, String> {
             under_maps: false,
             under_matlib: false,
         };
-        lint_dir(&mut tree, &ctx, &mut violations);
+        lint_dir(&mut tree, &ctx, cats, &mut violations);
     }
 
     let scanned_at = SystemTime::now()
@@ -558,7 +651,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::asset_kind;
+    use super::{asset_kind, naming_issues, rule_category};
 
     fn kind(name: &str, asset: bool) -> (String, String, String) {
         let (family, label, type_name) = asset_kind(name, asset);
@@ -630,5 +723,37 @@ mod tests {
             kind("Splash.png", false),
             ("file".into(), "PNG".into(), "PNG file".into())
         );
+    }
+
+    fn rules(name: &str) -> Vec<&'static str> {
+        naming_issues(name, name).into_iter().map(|(rule, _)| rule).collect()
+    }
+
+    #[test]
+    fn naming_accepts_conventional_asset_names() {
+        assert!(rules("T_Rock_D.uasset").is_empty());
+        assert!(rules("MI_RedProjectile.uasset").is_empty());
+        assert!(rules("BP_AirCollideComponent.uasset").is_empty());
+        assert!(rules("BTDecorator_IsPlayerTooClose.uasset").is_empty());
+        // a chained modifier after the prefix is fine, and maps need no prefix
+        assert!(rules("M_PP_Highlight.uasset").is_empty());
+        assert!(rules("ArenaLevel1.umap").is_empty());
+    }
+
+    #[test]
+    fn naming_flags_broken_asset_names() {
+        assert_eq!(rules("MyAsset.uasset"), ["1.1"]); // no recognised prefix
+        assert_eq!(rules("T_rock.uasset"), ["1.1"]); // lowercase base name
+        assert_eq!(rules("T_Rock_1.uasset"), ["1.1"]); // one-digit variant
+        // a space is reported once, by 00.1, not again as a segment problem
+        assert_eq!(rules("T_Rock Name.uasset"), ["00.1"]);
+    }
+
+    #[test]
+    fn rules_split_into_two_categories() {
+        assert_eq!(rule_category("00.1"), "naming");
+        assert_eq!(rule_category("1.1"), "naming");
+        assert_eq!(rule_category("2.1.2"), "structure");
+        assert_eq!(rule_category("2.9"), "structure");
     }
 }

@@ -1,7 +1,7 @@
 {
   "name": "unreal-directory-scanner",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Scan any directory and explore its Unreal asset tree",
   "scripts": {
     "build:web": "tsc",

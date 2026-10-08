@@ -20,7 +20,8 @@ runtime npm dependency; TypeScript is a devDependency only.
   `target`, `dist`.
 - Remembers the last folder between runs.
 - Unreadable subfolders are skipped instead of aborting the scan.
-- Allar (Gamemakin UE style guide) directory checks with inline issue markers.
+- Allar checks split into two categories, naming and directory structure, each
+  with its own rule select, summary line and inline issue markers.
 - Light theme by default, with a `dark` toggle remembered between runs; square,
   borderless controls.
 
@@ -51,33 +52,46 @@ instead of landing in "unrecognised": `NS_`, `NE_`, `CS_`, `IA_`, `IMC_`, `DA_`,
 
 Colour is per **family**, not per prefix, because 80-odd prefixes cannot each get
 a distinguishable colour: blueprint, mesh, material, texture, animation, audio,
-ai, ui, fx, data, input, level, file. The chip carries the exact prefix (hover it
-for the type name), and the legend under the summary is a census of the types in
-the current scan.
+ai, ui, fx, data, input, level, file. The chip carries the exact prefix, sits in
+its own column at the right edge of the tree so types line up down the page, and
+names its type on hover. The legend, also on the right, is a census of the types
+in the current scan, most common first.
 
 ## Allar checks
 
 When the folder looks like Unreal content (it is named `Content`, it holds a
-`Content/` folder, or a `*.uproject` sits beside it), the scan also checks the
+`Content/` folder, or a `*.uproject` sits beside it), the scan also runs the
 [Allar / Gamemakin UE style guide](https://github.com/Allar/ue5-style-guide)
-section 2 directory rules. Turn them off with **Allar checks**, and use **issues
-only** to hide everything that is fine. Hover a marker to see the rules it is
-citing.
+checks. The guide splits into naming (section 1) and Content directory structure
+(section 2), so the toolbar carries one rule select per category.
 
-| Rule | Check |
-| --- | --- |
-| 2.1.1 | folder name is PascalCase |
-| 2.1.2 | folder name contains no space |
-| 2.1.3 / 00.1 | folder name uses only `A-Z a-z 0-9 _` |
-| 2.2.1 | no `.uasset`/`.umap` loose in `Content/` |
-| 2.4 | every `.umap` lives under a `Maps` folder |
-| 2.6.1 | no folder named `Assets` |
-| 2.6.2 | no folders named `Meshes`, `Textures`, `Materials` |
-| 2.8 | base materials (`M_*`) live under `MaterialLibrary` |
-| 2.9 | no empty folders |
+Each select offers `off`, `all`, or a single rule. `off` stops that category
+being checked at all, a single rule also narrows the tree to that rule, and the
+summary reports each category on its own line so one cannot hide the other.
+**issues only** still hides everything that is fine, across both categories.
+Hover a marker to see the rules it cites.
+
+| Rule | Category | Check |
+| --- | --- | --- |
+| 00.1 | naming | file name uses only `A-Z a-z 0-9 _` |
+| 1.1 | naming | file name starts with a recognised prefix, and each part after it is PascalCase with two-digit variants |
+| 2.1.1 | structure | folder name is PascalCase |
+| 2.1.2 | structure | folder name contains no space |
+| 2.1.3 | structure | folder name uses only `A-Z a-z 0-9 _` |
+| 2.2.1 | structure | no `.uasset`/`.umap` loose in `Content/` |
+| 2.4 | structure | every `.umap` lives under a `Maps` folder |
+| 2.6.1 | structure | no folder named `Assets` |
+| 2.6.2 | structure | no folders named `Meshes`, `Textures`, `Materials` |
+| 2.8 | structure | base materials (`M_*`) live under `MaterialLibrary` |
+| 2.9 | structure | no empty folders |
 
 `Content/Developers/**` (a sandbox per 2.3) and `Content/Python/**` (UE's Python
-folder rather than content) are exempt.
+folder rather than content) are exempt, and maps are typed by extension so they
+are never asked for a filename prefix.
+
+Not yet checked: whether a file's prefix matches the asset's *actual* class. That
+class lives in the `.uasset` package header rather than the name, which needs a
+UE 5.6 package reader.
 
 Out of scope, because they need the editor rather than the filesystem: 2.3, 2.5
 and 2.7 are advisory, and sections 3 to 7 (Blueprint graphs, mesh UVs and
