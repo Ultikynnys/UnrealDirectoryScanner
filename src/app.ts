@@ -210,10 +210,11 @@ function renderFile(file: FileEntry, depth: number): HTMLLIElement {
   return li;
 }
 
-function renderDir(node: TreeNode, depth: number): HTMLLIElement {
+function renderDir(node: TreeNode, depth: number, path: string): HTMLLIElement {
   const li = document.createElement('li');
   li.className = 'node';
   li.dataset.name = node.name.toLowerCase();
+  li.dataset.path = path;
   if (depth <= openBelowDepth) li.classList.add('is-open');
 
   const files = visibleFiles(node);
@@ -255,7 +256,7 @@ function renderDir(node: TreeNode, depth: number): HTMLLIElement {
 
   const children = document.createElement('ul');
   children.className = 'children';
-  for (const child of node.children) children.append(renderDir(child, depth + 1));
+  for (const child of node.children) children.append(renderDir(child, depth + 1, `${path}/${child.name}`));
   for (const file of files) children.append(renderFile(file, depth + 1));
 
   li.append(row, children);
@@ -264,7 +265,9 @@ function renderDir(node: TreeNode, depth: number): HTMLLIElement {
 
 function render(): void {
   if (!model) return;
-  treeEl.replaceChildren(renderDir(model.tree, 0));
+  const wasOpen = folderOpenState();
+  treeEl.replaceChildren(renderDir(model.tree, 0, model.tree.name));
+  restoreOpenState(wasOpen);
   statsEl.textContent = `${plural(model.tree.assets, 'asset')}, ${plural(
     model.tree.total,
     'file',
@@ -403,6 +406,25 @@ function applyFilter(): void {
   const first = treeEl.firstElementChild;
   if (model && first && (query.length > 0 || issuesEl.checked)) {
     filterNode(first, model.tree, query);
+  }
+}
+
+/* Which folders are unfolded is the user's doing, so it is put back after the tree
+   is rebuilt for a new setting. It is keyed by path, so it also carries across a
+   re-scan, and folders that are new to the tree keep the default depth. */
+function folderOpenState(): Map<string, boolean> {
+  const state = new Map<string, boolean>();
+  for (const li of treeEl.querySelectorAll<HTMLElement>('li.node[data-path]')) {
+    state.set(li.dataset.path ?? '', li.classList.contains('is-open'));
+  }
+  return state;
+}
+
+function restoreOpenState(state: Map<string, boolean>): void {
+  for (const li of treeEl.querySelectorAll<HTMLElement>('li.node[data-path]')) {
+    const wasOpen = state.get(li.dataset.path ?? '');
+    if (wasOpen === undefined) continue;
+    li.classList.toggle('is-open', wasOpen);
   }
 }
 
