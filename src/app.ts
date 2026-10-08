@@ -106,16 +106,18 @@ function checkedRules(el: HTMLDetailsElement): string[] {
     .map((box) => box.value);
 }
 
-// Nothing picked switches a category off; everything picked leaves the tree
-// whole; a partial pick also narrows the tree to the rules that are on.
-function categoryOn(el: HTMLDetailsElement): boolean {
-  return checkedRules(el).length > 0;
+// The rules the pickers are asking for. It stays null until a rule is touched, so
+// that an untouched UI lets the backend decide: every rule, but only when the
+// folder looks like Unreal content.
+let rulesTouched = false;
+
+function pickedRuleSelection(): string[] | null {
+  return rulesTouched ? [...checkedRules(namingEl), ...checkedRules(structureEl)] : null;
 }
 
-function partialRules(): Set<string> | null {
-  const picked = [...checkedRules(namingEl), ...checkedRules(structureEl)];
-  const total = ruleBoxes(namingEl).length + ruleBoxes(structureEl).length;
-  return picked.length > 0 && picked.length < total ? new Set(picked) : null;
+// Nothing picked means the category is off, which the backend is told about.
+function categoryOn(el: HTMLDetailsElement): boolean {
+  return checkedRules(el).length > 0;
 }
 
 function renderRuleTriggers(): void {
@@ -129,15 +131,6 @@ function renderRuleTriggers(): void {
     master.checked = on > 0;
     master.indeterminate = on > 0 && on < boxes.length;
   }
-}
-
-// True when the node or any descendant reports one of those rules, so a rule
-// filter keeps the path down to every match open.
-function hasRule(node: TreeNode, rules: Set<string>): boolean {
-  return (
-    node.issues.some((issue) => rules.has(issue.rule)) ||
-    node.children.some((child) => hasRule(child, rules))
-  );
 }
 
 function formatBytes(bytes: number): string {
@@ -282,7 +275,14 @@ function renderSummary(): void {
 
   if (!model.lintApplied) {
     summaryEl.append(
-      summaryLine('Allar checks off - no Unreal project detected in this folder.', true),
+      summaryLine(
+        `Allar checks off - ${
+          model.looksUnreal
+            ? 'every rule is switched off.'
+            : 'no Unreal project detected in this folder.'
+        }`,
+        true,
+      ),
     );
     return;
   }
@@ -361,11 +361,9 @@ function renderLegend(): void {
 /* Filtering walks the data, then hides DOM rows, so a folder survives when any
    descendant matches and the path down to it stays open. */
 function filterNode(li: Element, node: TreeNode, query: string): boolean {
-  const rules = partialRules();
-  const only = issuesEl.checked || rules !== null;
+  const only = issuesEl.checked;
   const matches = (name: string): boolean => query.length > 0 && name.toLowerCase().includes(query);
-  let keep =
-    matches(node.name) || (only && (rules === null ? node.violations > 0 : hasRule(node, rules)));
+  let keep = matches(node.name) || (only && node.violations > 0);
 
   const childLis = [...(li.querySelector('.children')?.children ?? [])];
   let index = 0;
@@ -390,7 +388,7 @@ function applyFilter(): void {
   const query = filterEl.value.trim().toLowerCase();
   for (const li of treeEl.querySelectorAll('li.node')) li.classList.remove('is-hidden');
   const first = treeEl.firstElementChild;
-  if (model && first && (query.length > 0 || issuesEl.checked || partialRules() !== null)) {
+  if (model && first && (query.length > 0 || issuesEl.checked)) {
     filterNode(first, model.tree, query);
   }
 }
@@ -408,11 +406,7 @@ function fail(message: string): void {
 
 async function scan(path: string): Promise<void> {
   if (!invoke) return;
-  model = await invoke<Payload>('scan_directory', {
-    path,
-    naming: categoryOn(namingEl),
-    structure: categoryOn(structureEl),
-  });
+  model = await invoke<Payload>('scan_directory', { path, rules: pickedRuleSelection() });
   root = model.root;
   rootEl.textContent = model.root;
   render();
@@ -477,21 +471,11 @@ darkEl.addEventListener('change', () => {
   localStorage.setItem(themeKey, darkEl.checked ? 'dark' : 'light');
   applyTheme(darkEl.checked);
 });
-// Switching a whole category off changes which checks run, so that needs a
-// re-scan; narrowing within a live category only re-filters what is shown.
-let namingWasOn = true;
-let structureWasOn = true;
-
+// Any change to the rules changes which checks the backend runs, so the folder is
+// re-scanned rather than the tree merely re-filtered.
 function applyRulesChange(): void {
+  rulesTouched = true;
   renderRuleTriggers();
-  const namingNow = categoryOn(namingEl);
-  const structureNow = categoryOn(structureEl);
-  if (namingNow === namingWasOn && structureNow === structureWasOn) {
-    applyFilter();
-    return;
-  }
-  namingWasOn = namingNow;
-  structureWasOn = structureNow;
   void load();
 }
 

@@ -1,6 +1,6 @@
 [package]
 name = "unreal-directory-scanner"
-version = "0.6.1"
+version = "0.6.2"
 description = "Scan any directory and explore its Unreal asset tree"
 authors = ["Ultikynnys"]
 edition = "2021"

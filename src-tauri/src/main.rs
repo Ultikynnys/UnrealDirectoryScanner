@@ -315,10 +315,26 @@ fn scan_dir(abs: &Path, name: String) -> std::io::Result<Node> {
    former a sandbox, and the latter is UE's Python folder rather than project
    content. */
 
-#[derive(Clone, Copy)]
-struct Cats {
-    naming: bool,
-    structure: bool,
+// Which checks the pickers are asking for. `None` means every rule, which is also
+// what an untouched UI sends; an explicit list names the rules that are on.
+struct Rules {
+    ids: Option<Vec<String>>,
+}
+
+impl Rules {
+    fn on(&self, rule: &str) -> bool {
+        match &self.ids {
+            None => true,
+            Some(ids) => ids.iter().any(|id| id == rule),
+        }
+    }
+
+    fn any_on(&self) -> bool {
+        match &self.ids {
+            None => true,
+            Some(ids) => !ids.is_empty(),
+        }
+    }
 }
 
 fn rule_category(rule: &str) -> &'static str {
@@ -425,10 +441,16 @@ fn naming_issues(name: &str, rel: &str) -> Vec<(&'static str, String)> {
 fn flag(
     out: &mut Vec<Violation>,
     issues: &mut Vec<Issue>,
+    rules: &Rules,
     rule: &str,
     message: String,
     path: &str,
 ) {
+    // A rule the pickers have switched off is not reported at all, so nothing
+    // downstream has to know to hide it.
+    if !rules.on(rule) {
+        return;
+    }
     let category = rule_category(rule);
     issues.push(Issue {
         rule: rule.to_string(),
@@ -443,7 +465,7 @@ fn flag(
     });
 }
 
-fn lint_dir(node: &mut Node, ctx: &Ctx, cats: Cats, out: &mut Vec<Violation>) -> u64 {
+fn lint_dir(node: &mut Node, ctx: &Ctx, rules: &Rules, out: &mut Vec<Violation>) -> u64 {
     let root = ctx.rel.is_empty();
     let exempt = ctx.exempt || node.name == "Developers" || node.name == "Python";
     let in_maps = ctx.under_maps || node.name == "Maps";
@@ -452,16 +474,17 @@ fn lint_dir(node: &mut Node, ctx: &Ctx, cats: Cats, out: &mut Vec<Violation>) ->
 
     let mut issues: Vec<Issue> = Vec::new();
 
-    if !exempt && cats.structure {
+    if !exempt {
         // The scanned root's own name is the user's choice, not a project folder.
         if !root {
             if let Some((rule, message)) = folder_name_issue(&node.name) {
-                flag(out, &mut issues, rule, message, &ctx.rel);
+                flag(out, &mut issues, rules, rule, message, &ctx.rel);
             }
             if node.name == "Assets" {
                 flag(
                     out,
                     &mut issues,
+                    rules,
                     "2.6.1",
                     format!("\"{}\" is a redundant type folder; all assets are assets.", ctx.rel),
                     &ctx.rel,
@@ -470,6 +493,7 @@ fn lint_dir(node: &mut Node, ctx: &Ctx, cats: Cats, out: &mut Vec<Violation>) ->
                 flag(
                     out,
                     &mut issues,
+                    rules,
                     "2.6.2",
                     format!(
                         "\"{}\" is a type folder; asset name prefixes already convey the type.",
@@ -482,13 +506,13 @@ fn lint_dir(node: &mut Node, ctx: &Ctx, cats: Cats, out: &mut Vec<Violation>) ->
                 flag(
                     out,
                     &mut issues,
+                    rules,
                     "2.9",
                     format!("\"{}\" is an empty folder.", ctx.rel),
                     &ctx.rel,
                 );
             }
         }
-
     }
 
     if !exempt {
@@ -502,28 +526,28 @@ fn lint_dir(node: &mut Node, ctx: &Ctx, cats: Cats, out: &mut Vec<Violation>) ->
                 continue;
             }
             let mut found: Vec<(&'static str, String)> = Vec::new();
-            if cats.structure {
-                if in_content {
-                    found.push((
-                        "2.2.1",
-                        format!("\"{rel}\" is a global asset; project assets belong in Content/<Project>."),
-                    ));
-                }
-                if is_umap(&file.name) && !in_maps {
-                    found.push(("2.4", format!("\"{rel}\" is a map outside a Maps folder.")));
-                }
-                if file.name.starts_with("M_") && !in_matlib {
-                    found.push((
-                        "2.8",
-                        format!("\"{rel}\" is a base material outside MaterialLibrary."),
-                    ));
-                }
+            if in_content {
+                found.push((
+                    "2.2.1",
+                    format!("\"{rel}\" is a global asset; project assets belong in Content/<Project>."),
+                ));
             }
-            if cats.naming {
-                found.extend(naming_issues(&file.name, &rel));
+            if is_umap(&file.name) && !in_maps {
+                found.push(("2.4", format!("\"{rel}\" is a map outside a Maps folder.")));
             }
+            if file.name.starts_with("M_") && !in_matlib {
+                found.push((
+                    "2.8",
+                    format!("\"{rel}\" is a base material outside MaterialLibrary."),
+                ));
+            }
+            found.extend(
+                naming_issues(&file.name, &rel)
+                    .into_iter()
+                    .filter(|(rule, _)| rules.on(rule)),
+            );
             for (rule, message) in found {
-                flag(out, &mut file.issues, rule, message, &rel);
+                flag(out, &mut file.issues, rules, rule, message, &rel);
             }
         }
     }
@@ -542,7 +566,7 @@ fn lint_dir(node: &mut Node, ctx: &Ctx, cats: Cats, out: &mut Vec<Violation>) ->
             under_maps: in_maps,
             under_matlib: in_matlib,
         };
-        nested += lint_dir(child, &child_ctx, cats, out);
+        nested += lint_dir(child, &child_ctx, rules, out);
     }
 
     node.issues = issues;
@@ -570,11 +594,7 @@ fn looks_like_unreal(root: &Path, name: &str) -> bool {
 }
 
 #[tauri::command]
-fn scan_directory(
-    path: String,
-    structure: Option<bool>,
-    naming: Option<bool>,
-) -> Result<Payload, String> {
+fn scan_directory(path: String, rules: Option<Vec<String>>) -> Result<Payload, String> {
     let root = PathBuf::from(&path);
     if !root.is_dir() {
         return Err(format!("not a directory: {path}"));
@@ -586,11 +606,14 @@ fn scan_directory(
         .unwrap_or_else(|| root.display().to_string());
 
     let looks_unreal = looks_like_unreal(&root, &name);
-    let cats = Cats {
-        naming: naming.unwrap_or(looks_unreal),
-        structure: structure.unwrap_or(looks_unreal),
+    // The pickers send the rules they want; with nothing sent, check everything,
+    // but only when the folder looks like Unreal content.
+    let rules = match rules {
+        Some(ids) => Rules { ids: Some(ids) },
+        None if looks_unreal => Rules { ids: None },
+        None => Rules { ids: Some(Vec::new()) },
     };
-    let lint_applied = cats.naming || cats.structure;
+    let lint_applied = rules.any_on();
 
     let mut tree = scan_dir(&root, name).map_err(|e| format!("could not read {path}: {e}"))?;
 
@@ -602,7 +625,7 @@ fn scan_directory(
             under_maps: false,
             under_matlib: false,
         };
-        lint_dir(&mut tree, &ctx, cats, &mut violations);
+        lint_dir(&mut tree, &ctx, &rules, &mut violations);
     }
 
     let scanned_at = SystemTime::now()
@@ -651,7 +674,9 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{asset_kind, naming_issues, rule_category};
+    use super::{
+        asset_kind, lint_dir, naming_issues, rule_category, Ctx, FileEntry, Node, Rules, Violation,
+    };
 
     fn kind(name: &str, asset: bool) -> (String, String, String) {
         let (family, label, type_name) = asset_kind(name, asset);
@@ -755,5 +780,74 @@ mod tests {
         assert_eq!(rule_category("1.1"), "naming");
         assert_eq!(rule_category("2.1.2"), "structure");
         assert_eq!(rule_category("2.9"), "structure");
+    }
+
+    fn leaf_file(name: &str) -> FileEntry {
+        let (family, label, type_name) = asset_kind(name, true);
+        FileEntry {
+            name: name.to_string(),
+            size: 1,
+            asset: true,
+            issues: Vec::new(),
+            type_family: family.to_string(),
+            type_label: label,
+            type_name,
+        }
+    }
+
+    // Content/Haeretica/M_Loose.uasset: a base material outside MaterialLibrary, so
+    // 2.8 fires and nothing else does.
+    fn tree_with_one_offender() -> Node {
+        Node {
+            name: "Content".to_string(),
+            is_dir: true,
+            files: Vec::new(),
+            children: vec![Node {
+                name: "Haeretica".to_string(),
+                is_dir: true,
+                files: vec![leaf_file("M_Loose.uasset")],
+                children: Vec::new(),
+                assets: 1,
+                total: 1,
+                bytes: 1,
+                issues: Vec::new(),
+                violations: 0,
+            }],
+            assets: 1,
+            total: 1,
+            bytes: 1,
+            issues: Vec::new(),
+            violations: 0,
+        }
+    }
+
+    fn lint_with(ids: Option<Vec<String>>) -> Vec<Violation> {
+        let mut tree = tree_with_one_offender();
+        let ctx = Ctx {
+            rel: String::new(),
+            exempt: false,
+            under_maps: false,
+            under_matlib: false,
+        };
+        let mut out = Vec::new();
+        lint_dir(&mut tree, &ctx, &Rules { ids }, &mut out);
+        out
+    }
+
+    #[test]
+    fn a_disabled_rule_reports_nothing_at_all() {
+        let everything = lint_with(None);
+        assert_eq!(everything.len(), 1);
+        assert_eq!(everything[0].rule, "2.8");
+
+        // The same tree with 2.8 switched off, as unchecking it in the picker does:
+        // the violation has to disappear rather than merely be hidden by the UI.
+        let without_28 = lint_with(Some(vec!["2.9".to_string(), "1.1".to_string()]));
+        assert!(!without_28.iter().any(|v| v.rule == "2.8"));
+        assert_eq!(without_28.len(), 0);
+
+        // and switching everything off reports nothing while still running
+        let nothing = lint_with(Some(Vec::new()));
+        assert_eq!(nothing.len(), 0);
     }
 }
