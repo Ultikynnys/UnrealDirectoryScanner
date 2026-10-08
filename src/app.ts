@@ -29,6 +29,8 @@ interface TreeNode {
   bytes: number;
   issues: Issue[];
   violations: number;
+  namingViolations: number;
+  structureViolations: number;
 }
 
 interface Violation {
@@ -156,13 +158,14 @@ function guides(depth: number): DocumentFragment {
   return out;
 }
 
-/* One "! n" marker plus a tooltip listing the Allar rules that fired. */
-function issueMarker(issues: Issue[], total: number): HTMLElement {
+/* One "! n" tag per category plus a tooltip listing that category's rules. */
+function issueMarker(issues: Issue[], total: number, category: string): HTMLElement {
+  const mine = issues.filter((issue) => issue.category === category);
   const marker = document.createElement('span');
-  marker.className = 'flag';
+  marker.className = `flag flag--${category}`;
   marker.textContent = `! ${total}`;
-  const lines = issues.map((issue) => `${issue.rule}  ${issue.message}`);
-  const nested = total - issues.length;
+  const lines = mine.map((issue) => `${issue.rule}  ${issue.message}`);
+  const nested = total - mine.length;
   if (nested > 0) lines.push(`${nested} more in this folder's contents`);
   marker.title = lines.join('\n');
   return marker;
@@ -195,7 +198,11 @@ function renderFile(file: FileEntry, depth: number): HTMLLIElement {
   size.textContent = formatBytes(file.size);
 
   row.append(guides(depth), spacer, name, size);
-  if (file.issues.length > 0) row.append(issueMarker(file.issues, file.issues.length));
+  const namingIssues = file.issues.filter((issue) => issue.category === 'naming').length;
+  if (file.issues.length - namingIssues > 0) {
+    row.append(issueMarker(file.issues, file.issues.length - namingIssues, 'structure'));
+  }
+  if (namingIssues > 0) row.append(issueMarker(file.issues, namingIssues, 'naming'));
   // appended last so the type lines up in its own right-hand column
   row.append(chip);
   row.title = `${file.name}\n${file.typeName}\n${formatBytes(file.size)}${file.asset ? ' - asset' : ' - not an asset'}`;
@@ -238,7 +245,12 @@ function renderDir(node: TreeNode, depth: number): HTMLLIElement {
   }
 
   row.append(guides(depth), caret, name, badge);
-  if (node.violations > 0) row.append(issueMarker(node.issues, node.violations));
+  if (node.structureViolations > 0) {
+    row.append(issueMarker(node.issues, node.structureViolations, 'structure'));
+  }
+  if (node.namingViolations > 0) {
+    row.append(issueMarker(node.issues, node.namingViolations, 'naming'));
+  }
   row.title = `${node.name}/\n${plural(node.assets, 'asset')}, ${plural(node.total, 'file')}, ${formatBytes(node.bytes)}`;
 
   const children = document.createElement('ul');

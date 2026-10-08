@@ -22,6 +22,7 @@
   /* the two rule categories, wherever they are reported */
   --structure: #b4231b;
   --naming: #7a3cb8;
+  --naming-bg: #f2e9fd;
   --f-blueprint: #1f5fd0;
   --f-mesh: #96620f;
   --f-material: #6a37bd;
@@ -59,6 +60,7 @@
   --warn-bg: #33221d;
   --structure: #ff9d84;
   --naming: #c9a2f2;
+  --naming-bg: #2c2139;
   --f-blueprint: #6ea8fe;
   --f-mesh: #e0a458;
   --f-material: #b18cf0;
@@ -225,6 +227,17 @@ body {
 
 .summary.summary--naming {
   color: var(--naming);
+}
+
+/* one tag per category, in the same colours as the summary lines, and doubled
+   for the same reason */
+.flag.flag--structure {
+  color: var(--structure);
+}
+
+.flag.flag--naming {
+  color: var(--naming);
+  background: var(--naming-bg);
 }
 
 /* toolbar wording is chrome rather than content: dragging across it should not

@@ -147,9 +147,12 @@ struct Node {
     assets: u64,
     total: u64,
     bytes: u64,
-    // Allar issues on this folder itself, and how many exist anywhere beneath it.
+    // Allar issues on this folder itself, and how many exist anywhere beneath it,
+    // split by category so each one can be tagged in its own colour.
     issues: Vec<Issue>,
     violations: u64,
+    naming_violations: u64,
+    structure_violations: u64,
 }
 
 #[derive(Serialize)]
@@ -257,6 +260,8 @@ fn scan_dir(abs: &Path, name: String) -> std::io::Result<Node> {
         bytes: 0,
         issues: Vec::new(),
         violations: 0,
+        naming_violations: 0,
+        structure_violations: 0,
     };
 
     let mut dir_names: Vec<String> = Vec::new();
@@ -554,7 +559,13 @@ fn lint_dir(node: &mut Node, ctx: &Ctx, rules: &Rules, out: &mut Vec<Violation>)
 
     let own =
         issues.len() as u64 + node.files.iter().map(|f| f.issues.len() as u64).sum::<u64>();
+    let own_naming = issues
+        .iter()
+        .chain(node.files.iter().flat_map(|f| f.issues.iter()))
+        .filter(|issue| issue.category == "naming")
+        .count() as u64;
     let mut nested = 0u64;
+    let mut nested_naming = 0u64;
     for child in &mut node.children {
         let child_ctx = Ctx {
             rel: if root {
@@ -567,10 +578,13 @@ fn lint_dir(node: &mut Node, ctx: &Ctx, rules: &Rules, out: &mut Vec<Violation>)
             under_matlib: in_matlib,
         };
         nested += lint_dir(child, &child_ctx, rules, out);
+        nested_naming += child.naming_violations;
     }
 
     node.issues = issues;
     node.violations = own + nested;
+    node.naming_violations = own_naming + nested_naming;
+    node.structure_violations = (own - own_naming) + (nested - nested_naming);
     node.violations
 }
 
@@ -812,12 +826,16 @@ mod tests {
                 bytes: 1,
                 issues: Vec::new(),
                 violations: 0,
+                naming_violations: 0,
+                structure_violations: 0,
             }],
             assets: 1,
             total: 1,
             bytes: 1,
             issues: Vec::new(),
             violations: 0,
+            naming_violations: 0,
+            structure_violations: 0,
         }
     }
 
@@ -849,5 +867,26 @@ mod tests {
         // and switching everything off reports nothing while still running
         let nothing = lint_with(Some(Vec::new()));
         assert_eq!(nothing.len(), 0);
+    }
+
+    #[test]
+    fn violations_are_rolled_up_per_category() {
+        let mut tree = tree_with_one_offender();
+        let ctx = Ctx {
+            rel: String::new(),
+            exempt: false,
+            under_maps: false,
+            under_matlib: false,
+        };
+        let mut out = Vec::new();
+        lint_dir(&mut tree, &ctx, &Rules { ids: None }, &mut out);
+
+        // the only offender is the base material, which is a structure rule, and
+        // the name itself is fine, so the naming roll-up stays empty
+        assert_eq!(tree.children[0].structure_violations, 1);
+        assert_eq!(tree.children[0].naming_violations, 0);
+        assert_eq!(tree.structure_violations, 1);
+        assert_eq!(tree.naming_violations, 0);
+        assert_eq!(tree.violations, 1);
     }
 }
