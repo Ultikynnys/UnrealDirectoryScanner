@@ -1,0 +1,279 @@
+/* A file-explorer style tree. Colours are custom properties so the light
+   variant is one media query, and the indent guides are real elements rather
+   than background tricks so they line up at every depth. */
+
+:root {
+  --bg: #16181d;
+  --bar: #1c1f26;
+  --line: #2a2f38;
+  --guide: #333a45;
+  --fg: #dfe3ea;
+  --fg-dim: #8f98a6;
+  --accent: #4c8bf5;
+  --accent-soft: #21324d;
+  --row-hover: #22262e;
+  --mono: Consolas, "Cascadia Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+  --ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --indent: 15px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #ffffff;
+    --bar: #f6f7f9;
+    --line: #e3e6ea;
+    --guide: #d7dbe1;
+    --fg: #1b1f24;
+    --fg-dim: #6b7480;
+    --accent: #1f6feb;
+    --accent-soft: #dce8ff;
+    --row-hover: #f0f3f7;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--ui);
+  font-size: 14px;
+}
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: var(--bar);
+  border-bottom: 1px solid var(--line);
+}
+
+.bar__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.bar__root {
+  margin: 2px 0 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--fg-dim);
+  word-break: break-all;
+}
+
+.bar__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.input,
+.btn {
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 10px;
+}
+
+.input {
+  min-width: 190px;
+  font-family: var(--mono);
+}
+
+.input:focus,
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.btn {
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: var(--row-hover);
+}
+
+.btn--accent {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn--accent:hover {
+  background: var(--accent-soft);
+}
+
+.toggle {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12.5px;
+  color: var(--fg-dim);
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle input {
+  accent-color: var(--accent);
+}
+
+.stats {
+  margin: 10px 18px 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--fg-dim);
+}
+
+.banner {
+  margin: 10px 18px;
+  padding: 9px 12px;
+  border: 1px solid #7d3b3b;
+  border-radius: 6px;
+  background: #2a1b1b;
+  color: #ffb4b4;
+  font-size: 12.5px;
+}
+
+.loading {
+  margin: 18px;
+  color: var(--fg-dim);
+  font-size: 13px;
+}
+
+.wrap {
+  padding: 8px 0 60px;
+}
+
+.tree,
+.tree ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 23px;
+  padding-right: 18px;
+  cursor: default;
+}
+
+.row:hover {
+  background: var(--row-hover);
+}
+
+.row--dir {
+  cursor: pointer;
+}
+
+/* one guide per ancestor level, so the vertical rules line up exactly */
+.guide {
+  flex: 0 0 var(--indent);
+  align-self: stretch;
+  border-left: 1px solid var(--guide);
+}
+
+.guide--stub {
+  border-left-color: transparent;
+}
+
+.caret {
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.caret::before {
+  content: "";
+  position: absolute;
+  inset: 4px 5px auto 3px;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 6px solid var(--fg-dim);
+  transition: transform 0.12s ease;
+}
+
+.node.is-open > .row .caret::before {
+  transform: rotate(90deg) translateX(1px);
+}
+
+.node:not(.is-open) > .children {
+  display: none;
+}
+
+.name {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.row--dir .name {
+  font-weight: 600;
+}
+
+.name--leaf {
+  color: var(--fg-dim);
+}
+
+.count {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.count--dim {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--fg-dim);
+}
+
+.caret--empty::before {
+  content: none;
+}
+
+.size {
+  margin-left: 8px;
+  color: var(--fg-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.row.is-hidden,
+.node.is-hidden {
+  display: none;
+}
+
+.empty {
+  margin: 18px;
+  color: var(--fg-dim);
+  font-size: 13px;
+}
