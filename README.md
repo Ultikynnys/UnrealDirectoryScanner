@@ -38,6 +38,10 @@ from surface colour instead, and focus is shown by a surface change rather than 
 focus ring. Two things are kept, because they are structure rather than chrome:
 the tree's indent guides and the caret glyph.
 
+All text carries a drop shadow, which keeps the paler type colours legible on the
+white background. The shadow colour is themed with the rest of the palette: dark
+in the light theme and white in the dark one (`--text-shadow`).
+
 ## Asset types
 
 Asset files are always listed, and each is tagged with a prefix chip and a colour
@@ -65,11 +69,12 @@ When the folder looks like Unreal content (it is named `Content`, it holds a
 checks. The guide splits into naming (section 1) and Content directory structure
 (section 2), so the toolbar carries one rule select per category.
 
-Each select offers `off`, `all`, or a single rule. `off` stops that category
-being checked at all, a single rule also narrows the tree to that rule, and the
-summary reports each category on its own line so one cannot hide the other.
-**issues only** still hides everything that is fine, across both categories.
-Hover a marker to see the rules it cites.
+Each picker is multi-select: opening it lists that category's rules as
+checkboxes. Picking none switches the category off completely, picking all
+checks everything and leaves the tree whole, and a partial pick also narrows the
+tree to the rules that are on. The summary reports each category on its own
+line, so one cannot hide the other, and **issues only** still hides everything
+that is fine. Hover a marker to see the rules it cites.
 
 | Rule | Category | Check |
 | --- | --- | --- |

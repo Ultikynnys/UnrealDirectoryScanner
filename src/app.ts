@@ -60,8 +60,8 @@ const rootEl = byId<HTMLParagraphElement>('root');
 const statsEl = byId<HTMLParagraphElement>('stats');
 const filterEl = byId<HTMLInputElement>('filter');
 const filesEl = byId<HTMLInputElement>('showFiles');
-const namingEl = byId<HTMLSelectElement>('namingRules');
-const structureEl = byId<HTMLSelectElement>('structureRules');
+const namingEl = byId<HTMLDetailsElement>('namingRules');
+const structureEl = byId<HTMLDetailsElement>('structureRules');
 const issuesEl = byId<HTMLInputElement>('issuesOnly');
 const summaryEl = byId<HTMLElement>('summary');
 const legendEl = byId<HTMLElement>('legend');
@@ -87,19 +87,40 @@ const storageKey = 'unrealDirectoryScanner.path';
 
 let model: Payload | null = null;
 let root = '';
-// "off" stops a category being checked at all; naming a single rule also narrows
-// the tree to that rule. Leaving both on "all" checks everything and filters
-// nothing, which is what "issues only" does on its own.
-function categoryOn(el: HTMLSelectElement): boolean {
-  return el.value !== 'off';
+function ruleBoxes(el: HTMLDetailsElement): HTMLInputElement[] {
+  return [...el.querySelectorAll<HTMLInputElement>('input[type=checkbox]')];
 }
 
-function selectedRules(): Set<string> {
-  const rules = new Set<string>();
+function checkedRules(el: HTMLDetailsElement): string[] {
+  return ruleBoxes(el)
+    .filter((box) => box.checked)
+    .map((box) => box.value);
+}
+
+// Nothing picked switches a category off; everything picked leaves the tree
+// whole; a partial pick also narrows the tree to the rules that are on.
+function categoryOn(el: HTMLDetailsElement): boolean {
+  return checkedRules(el).length > 0;
+}
+
+function partialRules(): Set<string> | null {
+  const picked = [...checkedRules(namingEl), ...checkedRules(structureEl)];
+  const total = ruleBoxes(namingEl).length + ruleBoxes(structureEl).length;
+  return picked.length > 0 && picked.length < total ? new Set(picked) : null;
+}
+
+function rulesState(el: HTMLDetailsElement): string {
+  const boxes = ruleBoxes(el);
+  const on = boxes.filter((box) => box.checked).length;
+  if (on === 0) return 'off';
+  return on === boxes.length ? 'all' : `${on}/${boxes.length}`;
+}
+
+function renderRuleTriggers(): void {
   for (const el of [namingEl, structureEl]) {
-    if (el.value !== 'off' && el.value !== 'all') rules.add(el.value);
+    const state = el.querySelector('.rules__state');
+    if (state) state.textContent = rulesState(el);
   }
-  return rules;
 }
 
 // True when the node or any descendant reports one of those rules, so a rule
@@ -240,6 +261,7 @@ function render(): void {
   )}, ${formatBytes(model.tree.bytes)} - scanned ${new Date(model.scannedAt).toLocaleTimeString()}`;
   renderSummary();
   renderLegend();
+  renderRuleTriggers();
   applyFilter();
 }
 
@@ -331,11 +353,11 @@ function renderLegend(): void {
 /* Filtering walks the data, then hides DOM rows, so a folder survives when any
    descendant matches and the path down to it stays open. */
 function filterNode(li: Element, node: TreeNode, query: string): boolean {
-  const rules = selectedRules();
-  const only = issuesEl.checked || rules.size > 0;
+  const rules = partialRules();
+  const only = issuesEl.checked || rules !== null;
   const matches = (name: string): boolean => query.length > 0 && name.toLowerCase().includes(query);
   let keep =
-    matches(node.name) || (only && (rules.size === 0 ? node.violations > 0 : hasRule(node, rules)));
+    matches(node.name) || (only && (rules === null ? node.violations > 0 : hasRule(node, rules)));
 
   const childLis = [...(li.querySelector('.children')?.children ?? [])];
   let index = 0;
@@ -360,7 +382,7 @@ function applyFilter(): void {
   const query = filterEl.value.trim().toLowerCase();
   for (const li of treeEl.querySelectorAll('li.node')) li.classList.remove('is-hidden');
   const first = treeEl.firstElementChild;
-  if (model && first && (query.length > 0 || issuesEl.checked || selectedRules().size > 0)) {
+  if (model && first && (query.length > 0 || issuesEl.checked || partialRules() !== null)) {
     filterNode(first, model.tree, query);
   }
 }
@@ -447,9 +469,29 @@ darkEl.addEventListener('change', () => {
   localStorage.setItem(themeKey, darkEl.checked ? 'dark' : 'light');
   applyTheme(darkEl.checked);
 });
+// Switching a whole category off changes which checks run, so that needs a
+// re-scan; narrowing within a live category only re-filters what is shown.
+let namingWasOn = true;
+let structureWasOn = true;
+
 for (const el of [namingEl, structureEl]) {
   el.addEventListener('change', () => {
-    void load(); // re-scan too, since "off" stops the category being checked
+    renderRuleTriggers();
+    const namingNow = categoryOn(namingEl);
+    const structureNow = categoryOn(structureEl);
+    if (namingNow === namingWasOn && structureNow === structureWasOn) {
+      applyFilter();
+      return;
+    }
+    namingWasOn = namingNow;
+    structureWasOn = structureNow;
+    void load();
+  });
+  el.addEventListener('toggle', () => {
+    if (!el.open) return;
+    for (const other of [namingEl, structureEl]) {
+      if (other !== el) other.open = false;
+    }
   });
 }
 
