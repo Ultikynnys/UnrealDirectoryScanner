@@ -1,6 +1,6 @@
 //! A one-shot report, so the same checks can run from a script or a CI job with no
-//! window: `--check <folder>` prints one line per violation and exits non-zero when
-//! there is anything to report.
+//! window: `--check <folder>` - or any rule flag on its own - prints one line per
+//! violation and exits non-zero when there is anything to report.
 
 use crate::{lint_dir, rule_category, scan_dir, Ctx, Rules, Violation};
 use std::path::PathBuf;
@@ -19,12 +19,15 @@ Unreal Directory Scanner
 
 Options for --check:
   --rules <ids>  add these rules, comma separated, and repeatable
+  --rule <id>    add one rule; --rule 1.1 --rule 2.8 is the same as --rules 1.1,2.8
   --naming       add every asset naming rule
   --structure    add every content directory structure rule
   -h, --help     this text
 
 The flags add up rather than override each other: --naming --structure checks
-everything, as does passing none of them.
+everything, as does passing none of them. Any rule flag implies --check, so
+`--rules 1.1,2.8 ./Content` checks on its own; a rule flag with no folder is a
+usage error rather than a window.
 
 Rules: 00.1 1.1 (naming); 2.1.1 2.1.2 2.1.3 2.2.1 2.4 2.6.1 2.6.2 2.8 2.9 (structure)
 
@@ -46,18 +49,28 @@ pub fn run(args: &[String]) -> Option<i32> {
     let mut naming = false;
     let mut structure = false;
     let mut check = false;
+    let mut rules_given = false;
 
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         match arg.as_str() {
             "--check" => check = true,
-            "--naming" => naming = true,
-            "--structure" => structure = true,
-            "--rules" => {
+            "--naming" => {
+                naming = true;
+                rules_given = true;
+            }
+            "--structure" => {
+                structure = true;
+                rules_given = true;
+            }
+            "--rules" | "--rule" => {
+                let one = arg == "--rule";
                 let Some(list) = rest.next() else {
-                    eprintln!("--rules needs a comma separated list of rule ids\n\n{HELP}");
+                    eprintln!("{} needs {}\n", arg, if one { "a rule id" } else { "a list of rule ids" });
+                    eprintln!("{HELP}");
                     return Some(2);
                 };
+                rules_given = true;
                 for id in list.split(',').map(str::trim).filter(|id| !id.is_empty()) {
                     if !RULE_IDS.contains(&id) {
                         eprintln!(
@@ -77,12 +90,19 @@ pub fn run(args: &[String]) -> Option<i32> {
         }
     }
 
-    if !check {
+    // A rule flag is itself a request for the report, so it does not have to be
+    // paired with --check - which used to mean a rule flag was quietly ignored and
+    // the window opened with every rule on. Anything with no rule flag at all is a
+    // window launch.
+    if !check && !rules_given {
         return None;
     }
 
     let Some(path) = path else {
-        eprintln!("--check needs a folder to check\n\n{HELP}");
+        eprintln!(
+            "{} needs a folder to check\n\n{HELP}",
+            if check { "--check" } else { "a rule flag" }
+        );
         return Some(2);
     };
 

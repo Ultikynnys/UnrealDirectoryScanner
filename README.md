@@ -148,8 +148,9 @@ wants:
 unreal-directory-scanner --check ./MyProject/Content
 unreal-directory-scanner --check ./MyProject/Content --structure
 unreal-directory-scanner --check ./MyProject/Content --rules 1.1,2.8
+unreal-directory-scanner --rules 1.1,2.8 ./MyProject/Content
+unreal-directory-scanner --rule 1.1 --rule 2.8 ./MyProject/Content
 ```
-
 Every violation prints as `rule <tab> path <tab> message`, the path being relative
 to the folder being checked, so the output greps and diffs cleanly. The summary
 goes to standard error instead, leaving standard output pipeable. The exit status
@@ -159,8 +160,8 @@ CI step fails on its own. `--help` lists the options and every rule id, and
 
 The flags add up rather than override each other, so `--structure --rules 2.4`
 checks the structure rules plus 2.4, `--naming --structure` checks everything, and
-passing none of them also checks everything.
-
+passing none of them also checks everything. Any rule flag implies `--check`, so
+the last two examples above need no `--check` of their own.
 One Windows caveat: the release build declares the Windows GUI subsystem, so it
 has no console to print an interactive run to. Output still reaches a pipe or a
 file - which is how a CI job or `--check ... > report.txt` uses it - and the debug
