@@ -21,6 +21,21 @@ runtime npm dependency; TypeScript is a devDependency only.
 - Remembers the last folder between runs.
 - Unreadable subfolders are skipped instead of aborting the scan.
 - Allar (Gamemakin UE style guide) directory checks with inline issue markers.
+- Light theme by default, with a `dark` toggle remembered between runs; square,
+  borderless controls.
+
+## Theme
+
+Light is the default, and `dark` in the toolbar switches to the dark palette; the
+choice is remembered between runs. Both palettes are custom properties in
+`web/style.css`, light on `:root` and dark on `:root[data-theme='dark']`, so the
+app still renders light if the preference cannot be read.
+
+Controls are deliberately flat: no rounded corners and no borders or outlines on
+the toolbar controls, count pills, type chips or issue markers. Separation comes
+from surface colour instead, and focus is shown by a surface change rather than a
+focus ring. Two things are kept, because they are structure rather than chrome:
+the tree's indent guides and the caret glyph.
 
 ## Asset types
 

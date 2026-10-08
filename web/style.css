@@ -1,8 +1,44 @@
-/* A file-explorer style tree. Colours are custom properties so the light
-   variant is one media query, and the indent guides are real elements rather
+/* A file-explorer style tree. Colours are custom properties so the light and dark
+   palettes are one block each, and the indent guides are real elements rather
    than background tricks so they line up at every depth. */
 
+/* Light is the default: :root carries it, and the dark palette is scoped to
+   [data-theme='dark'], which app.ts sets from the stored preference. */
+
 :root {
+  --bg: #ffffff;
+  --bar: #f6f7f9;
+  --line: #e3e6ea;
+  --guide: #d7dbe1;
+  --fg: #1b1f24;
+  --fg-dim: #6b7480;
+  --accent: #1f6feb;
+  --accent-soft: #dce8ff;
+  --row-hover: #f0f3f7;
+  --ctl: #ffffff;
+  --ctl-hover: #eef1f5;
+  --warn: #b4231b;
+  --warn-bg: #fdece9;
+  --f-blueprint: #1f5fd0;
+  --f-mesh: #96620f;
+  --f-material: #6a37bd;
+  --f-texture: #0d776a;
+  --f-animation: #2d7a1d;
+  --f-audio: #b23678;
+  --f-ai: #3c46bd;
+  --f-ui: #bf372a;
+  --f-fx: #b15a09;
+  --f-data: #15658c;
+  --f-input: #5c7600;
+  --f-level: #0c6f82;
+  --f-file: #5b6573;
+  --f-other: #5b6573;
+  --mono: Consolas, "Cascadia Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+  --ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --indent: 15px;
+}
+
+:root[data-theme='dark'] {
   --bg: #16181d;
   --bar: #1c1f26;
   --line: #2a2f38;
@@ -12,9 +48,10 @@
   --accent: #4c8bf5;
   --accent-soft: #21324d;
   --row-hover: #22262e;
+  --ctl: #23272f;
+  --ctl-hover: #2c313a;
   --warn: #ff9d84;
   --warn-bg: #33221d;
-  --warn-line: #a4523f;
   --f-blueprint: #6ea8fe;
   --f-mesh: #e0a458;
   --f-material: #b18cf0;
@@ -29,40 +66,6 @@
   --f-level: #58c8d8;
   --f-file: #9aa4b2;
   --f-other: #7b8494;
-  --mono: Consolas, "Cascadia Mono", "DejaVu Sans Mono", ui-monospace, monospace;
-  --ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --indent: 15px;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #ffffff;
-    --bar: #f6f7f9;
-    --line: #e3e6ea;
-    --guide: #d7dbe1;
-    --fg: #1b1f24;
-    --fg-dim: #6b7480;
-    --accent: #1f6feb;
-    --accent-soft: #dce8ff;
-    --row-hover: #f0f3f7;
-    --warn: #b4231b;
-    --warn-bg: #fdece9;
-    --warn-line: #e2b0a8;
-    --f-blueprint: #1f5fd0;
-    --f-mesh: #96620f;
-    --f-material: #6a37bd;
-    --f-texture: #0d776a;
-    --f-animation: #2d7a1d;
-    --f-audio: #b23678;
-    --f-ai: #3c46bd;
-    --f-ui: #bf372a;
-    --f-fx: #b15a09;
-    --f-data: #15658c;
-    --f-input: #5c7600;
-    --f-level: #0c6f82;
-    --f-file: #5b6573;
-    --f-other: #5b6573;
-  }
 }
 
 * {
@@ -89,7 +92,6 @@ body {
   justify-content: space-between;
   padding: 12px 18px;
   background: var(--bar);
-  border-bottom: 1px solid var(--line);
 }
 
 .bar__title {
@@ -114,14 +116,13 @@ body {
   align-items: center;
 }
 
+/* flat controls: no border, no radius, a filled surface instead */
 .input,
 .btn {
   font: inherit;
   font-size: 12.5px;
   color: var(--fg);
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  background: var(--ctl);
   padding: 5px 10px;
 }
 
@@ -130,10 +131,10 @@ body {
   font-family: var(--mono);
 }
 
+/* focus is a surface change rather than an outline */
 .input:focus,
 .btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  background: var(--ctl-hover);
 }
 
 .btn {
@@ -145,7 +146,6 @@ body {
 }
 
 .btn--accent {
-  border-color: var(--accent);
   color: var(--accent);
 }
 
@@ -177,10 +177,8 @@ body {
 .banner {
   margin: 10px 18px;
   padding: 9px 12px;
-  border: 1px solid #7d3b3b;
-  border-radius: 6px;
-  background: #2a1b1b;
-  color: #ffb4b4;
+  background: var(--warn-bg);
+  color: var(--warn);
   font-size: 12.5px;
 }
 
@@ -275,7 +273,6 @@ body {
 .count {
   margin-left: 8px;
   padding: 1px 7px;
-  border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent);
   font-family: var(--mono);
@@ -285,7 +282,6 @@ body {
 
 .count--dim {
   background: transparent;
-  border: 1px solid var(--line);
   color: var(--fg-dim);
 }
 
@@ -328,8 +324,6 @@ body {
   flex: 0 0 auto;
   margin-left: 6px;
   padding: 0 6px;
-  border: 1px solid var(--warn-line);
-  border-radius: 999px;
   background: var(--warn-bg);
   color: var(--warn);
   font-family: var(--mono);
@@ -403,8 +397,6 @@ body {
   flex: 0 0 auto;
   min-width: 30px;
   padding: 0 5px;
-  border: 1px solid color-mix(in srgb, var(--tc, var(--fg-dim)) 55%, transparent);
-  border-radius: 4px;
   background: color-mix(in srgb, var(--tc, var(--fg-dim)) 15%, transparent);
   color: var(--tc, var(--fg-dim));
   font-family: var(--mono);
@@ -441,7 +433,6 @@ body {
   align-self: center;
   width: 9px;
   height: 9px;
-  border-radius: 3px;
   background: var(--tc, var(--f-other));
 }
 

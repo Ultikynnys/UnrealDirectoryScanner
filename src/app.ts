@@ -65,6 +65,19 @@ const legendEl = byId<HTMLParagraphElement>('legend');
 const pickEl = byId<HTMLButtonElement>('pick');
 const errorEl = byId<HTMLParagraphElement>('error');
 const loadingEl = byId<HTMLParagraphElement>('loading');
+const darkEl = byId<HTMLInputElement>('darkMode');
+
+/* Apply the stored theme before anything else renders, so a dark choice does not
+   show light first for long. :root is light, so a missing or unreadable
+   preference still lands on light. */
+const themeKey = 'unrealDirectoryScanner.theme';
+
+function applyTheme(dark: boolean): void {
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  darkEl.checked = dark;
+}
+
+applyTheme(localStorage.getItem(themeKey) === 'dark');
 
 const openBelowDepth = 1; // start with the top two levels unfolded
 const storageKey = 'unrealDirectoryScanner.path';
@@ -379,6 +392,10 @@ filesEl.addEventListener('change', () => {
   if (model) render();
 });
 issuesEl.addEventListener('change', applyFilter);
+darkEl.addEventListener('change', () => {
+  localStorage.setItem(themeKey, darkEl.checked ? 'dark' : 'light');
+  applyTheme(darkEl.checked);
+});
 lintEl.addEventListener('change', () => {
   lintFlag = lintEl.checked;
   void load();
