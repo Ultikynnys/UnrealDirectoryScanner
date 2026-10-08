@@ -157,6 +157,10 @@ is `0` when nothing was found, `1` when something was, and `2` for bad usage, so
 CI step fails on its own. `--help` lists the options and every rule id, and
 `--rules` rejects an id it does not know.
 
+The flags add up rather than override each other, so `--structure --rules 2.4`
+checks the structure rules plus 2.4, `--naming --structure` checks everything, and
+passing none of them also checks everything.
+
 One Windows caveat: the release build declares the Windows GUI subsystem, so it
 has no console to print an interactive run to. Output still reaches a pipe or a
 file - which is how a CI job or `--check ... > report.txt` uses it - and the debug

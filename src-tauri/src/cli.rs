@@ -18,10 +18,13 @@ Unreal Directory Scanner
   unreal-directory-scanner --check <folder>  print the Allar violations and exit
 
 Options for --check:
-  --rules <ids>  only these rules, comma separated (the default is every rule)
-  --naming       only the asset naming rules
-  --structure    only the content directory structure rules
+  --rules <ids>  add these rules, comma separated, and repeatable
+  --naming       add every asset naming rule
+  --structure    add every content directory structure rule
   -h, --help     this text
+
+The flags add up rather than override each other: --naming --structure checks
+everything, as does passing none of them.
 
 Rules: 00.1 1.1 (naming); 2.1.1 2.1.2 2.1.3 2.2.1 2.4 2.6.1 2.6.2 2.8 2.9 (structure)
 
@@ -83,16 +86,17 @@ pub fn run(args: &[String]) -> Option<i32> {
         return Some(2);
     };
 
-    // An explicit --rules list wins; otherwise the category flags narrow it down.
-    if ids.is_empty() && (naming || structure) {
-        ids = RULE_IDS
-            .iter()
-            .filter(|id| {
-                (naming && rule_category(id) == "naming")
-                    || (structure && rule_category(id) == "structure")
-            })
-            .map(|id| id.to_string())
-            .collect();
+    // The flags add up rather than override each other: --rules names individual
+    // rules, and the category flags add whole categories to them. No flags at all
+    // means every rule, which is also what the window starts with.
+    if naming || structure {
+        for id in RULE_IDS {
+            let wanted = (naming && rule_category(id) == "naming")
+                || (structure && rule_category(id) == "structure");
+            if wanted && !ids.iter().any(|chosen| chosen == id) {
+                ids.push(id.to_string());
+            }
+        }
     }
 
     let root = PathBuf::from(&path);
