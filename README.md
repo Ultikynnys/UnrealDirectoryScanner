@@ -70,11 +70,13 @@ checks. The guide splits into naming (section 1) and Content directory structure
 (section 2), so the toolbar carries one rule select per category.
 
 Each picker is multi-select: opening it lists that category's rules as
-checkboxes. Picking none switches the category off completely, picking all
-checks everything and leaves the tree whole, and a partial pick also narrows the
-tree to the rules that are on. The summary reports each category on its own
-line, so one cannot hide the other, and **issues only** still hides everything
-that is fine. Hover a marker to see the rules it cites.
+checkboxes, and a checkbox beside it switches the whole category on or off in one
+click, showing a half state when only some of its rules are on. Picking none
+switches the category off completely, picking all checks everything and leaves
+the tree whole, and a partial pick also narrows the tree to the rules that are
+on. The summary reports each category on its own line, so one cannot hide the
+other, and **issues only** still hides everything that is fine. Hover a marker to
+see the rules it cites.
 
 | Rule | Category | Check |
 | --- | --- | --- |

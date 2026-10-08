@@ -62,6 +62,15 @@ const filterEl = byId<HTMLInputElement>('filter');
 const filesEl = byId<HTMLInputElement>('showFiles');
 const namingEl = byId<HTMLDetailsElement>('namingRules');
 const structureEl = byId<HTMLDetailsElement>('structureRules');
+const namingAllEl = byId<HTMLInputElement>('namingAll');
+const structureAllEl = byId<HTMLInputElement>('structureAll');
+
+// Each category pairs its picker with an on/off switch, so the whole category can
+// be checked or cleared in one click without opening the list.
+const categories = [
+  [namingEl, namingAllEl],
+  [structureEl, structureAllEl],
+] as const;
 const issuesEl = byId<HTMLInputElement>('issuesOnly');
 const summaryEl = byId<HTMLElement>('summary');
 const legendEl = byId<HTMLElement>('legend');
@@ -109,17 +118,16 @@ function partialRules(): Set<string> | null {
   return picked.length > 0 && picked.length < total ? new Set(picked) : null;
 }
 
-function rulesState(el: HTMLDetailsElement): string {
-  const boxes = ruleBoxes(el);
-  const on = boxes.filter((box) => box.checked).length;
-  if (on === 0) return 'off';
-  return on === boxes.length ? 'all' : `${on}/${boxes.length}`;
-}
-
 function renderRuleTriggers(): void {
-  for (const el of [namingEl, structureEl]) {
+  for (const [el, master] of categories) {
+    const boxes = ruleBoxes(el);
+    const on = boxes.filter((box) => box.checked).length;
     const state = el.querySelector('.rules__state');
-    if (state) state.textContent = rulesState(el);
+    if (state) {
+      state.textContent = on === 0 ? 'off' : on === boxes.length ? 'all' : `${on}/${boxes.length}`;
+    }
+    master.checked = on > 0;
+    master.indeterminate = on > 0 && on < boxes.length;
   }
 }
 
@@ -474,22 +482,28 @@ darkEl.addEventListener('change', () => {
 let namingWasOn = true;
 let structureWasOn = true;
 
-for (const el of [namingEl, structureEl]) {
-  el.addEventListener('change', () => {
-    renderRuleTriggers();
-    const namingNow = categoryOn(namingEl);
-    const structureNow = categoryOn(structureEl);
-    if (namingNow === namingWasOn && structureNow === structureWasOn) {
-      applyFilter();
-      return;
-    }
-    namingWasOn = namingNow;
-    structureWasOn = structureNow;
-    void load();
+function applyRulesChange(): void {
+  renderRuleTriggers();
+  const namingNow = categoryOn(namingEl);
+  const structureNow = categoryOn(structureEl);
+  if (namingNow === namingWasOn && structureNow === structureWasOn) {
+    applyFilter();
+    return;
+  }
+  namingWasOn = namingNow;
+  structureWasOn = structureNow;
+  void load();
+}
+
+for (const [el, master] of categories) {
+  master.addEventListener('change', () => {
+    for (const box of ruleBoxes(el)) box.checked = master.checked;
+    applyRulesChange();
   });
+  el.addEventListener('change', applyRulesChange);
   el.addEventListener('toggle', () => {
     if (!el.open) return;
-    for (const other of [namingEl, structureEl]) {
+    for (const [other] of categories) {
       if (other !== el) other.open = false;
     }
   });

@@ -27,9 +27,12 @@
         <label class="toggle" title="also list non-asset files (scripts, images, configs)">
           <input type="checkbox" id="showFiles" /> all files
         </label>
+        <label class="toggle" title="check or clear every naming rule at once">
+          <input type="checkbox" id="namingAll" checked /> naming
+        </label>
         <details class="rules" id="namingRules">
           <summary class="btn" title="asset naming: a recognised prefix, a PascalCase base name, two-digit variants">
-            naming <span class="rules__state">all</span>
+            rules <span class="rules__state">all</span>
           </summary>
           <div class="rules__menu">
             <label class="rules__item"><input type="checkbox" value="1.1" checked /> 1.1 base name</label>
@@ -37,9 +40,12 @@
           </div>
         </details>
 
+        <label class="toggle" title="check or clear every structure rule at once">
+          <input type="checkbox" id="structureAll" checked /> structure
+        </label>
         <details class="rules" id="structureRules">
           <summary class="btn" title="content directory structure: folder names, type folders, map and material placement">
-            structure <span class="rules__state">all</span>
+            rules <span class="rules__state">all</span>
           </summary>
           <div class="rules__menu">
             <label class="rules__item"><input type="checkbox" value="2.1.1" checked /> 2.1.1 folder case</label>
