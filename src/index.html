@@ -27,12 +27,20 @@
         <label class="toggle" title="show non-asset files too">
           <input type="checkbox" id="showFiles" /> files
         </label>
+        <label class="toggle" title="check the Allar UE style guide directory rules">
+          <input type="checkbox" id="lint" /> Allar checks
+        </label>
+        <label class="toggle" title="hide rows that have no issues">
+          <input type="checkbox" id="issuesOnly" /> issues only
+        </label>
         <button class="btn" id="pick" type="button">Choose folder&hellip;</button>
         <button class="btn btn--accent" id="refresh" type="button">Refresh</button>
       </div>
     </header>
 
     <p class="stats" id="stats"></p>
+
+    <p class="summary" id="summary" hidden></p>
 
     <p class="banner" id="error" hidden></p>
 
@@ -41,6 +49,6 @@
       <p class="loading" id="loading">scanning&hellip;</p>
     </main>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
   </body>
 </html>

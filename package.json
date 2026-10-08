@@ -1,14 +1,16 @@
 {
   "name": "unreal-directory-scanner",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Scan any directory and explore its Unreal asset tree",
   "scripts": {
-    "dev": "tauri dev",
+    "build:web": "tsc && node scripts/build-web.mjs",
+    "dev": "npm run build:web && tauri dev",
     "build": "tauri build",
     "tauri": "tauri"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.12.1"
+    "@tauri-apps/cli": "^2.12.1",
+    "typescript": "^7.0.2"
   }
 }

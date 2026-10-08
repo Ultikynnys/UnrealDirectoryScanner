@@ -12,6 +12,9 @@
   --accent: #4c8bf5;
   --accent-soft: #21324d;
   --row-hover: #22262e;
+  --warn: #ff9d84;
+  --warn-bg: #33221d;
+  --warn-line: #a4523f;
   --mono: Consolas, "Cascadia Mono", "DejaVu Sans Mono", ui-monospace, monospace;
   --ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --indent: 15px;
@@ -28,6 +31,9 @@
     --accent: #1f6feb;
     --accent-soft: #dce8ff;
     --row-hover: #f0f3f7;
+    --warn: #b4231b;
+    --warn-bg: #fdece9;
+    --warn-line: #e2b0a8;
   }
 }
 
@@ -276,4 +282,32 @@ body {
   margin: 18px;
   color: var(--fg-dim);
   font-size: 13px;
+}
+
+.summary {
+  margin: 6px 18px 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--warn);
+}
+
+.summary--clean {
+  color: var(--fg-dim);
+}
+
+/* Allar issue marker: "!" plus the number of issues in the folder's subtree. */
+.flag {
+  flex: 0 0 auto;
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid var(--warn-line);
+  border-radius: 999px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: help;
 }
