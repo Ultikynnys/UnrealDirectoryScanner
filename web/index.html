@@ -24,8 +24,8 @@
         />
         <button class="btn" id="expand" type="button">Expand all</button>
         <button class="btn" id="collapse" type="button">Collapse all</button>
-        <label class="toggle" title="show non-asset files too">
-          <input type="checkbox" id="showFiles" /> files
+        <label class="toggle" title="also list non-asset files (scripts, images, configs)">
+          <input type="checkbox" id="showFiles" /> all files
         </label>
         <label class="toggle" title="check the Allar UE style guide directory rules">
           <input type="checkbox" id="lint" /> Allar checks
@@ -41,6 +41,8 @@
     <p class="stats" id="stats"></p>
 
     <p class="summary" id="summary" hidden></p>
+
+    <p class="legend" id="legend" hidden></p>
 
     <p class="banner" id="error" hidden></p>
 

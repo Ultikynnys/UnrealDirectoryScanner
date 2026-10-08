@@ -29,6 +29,100 @@ const SKIP_DIRS: [&str; 14] = [
 // Folders named for an asset type, which Allar 2.6.2 forbids.
 const TYPE_FOLDERS: [&str; 3] = ["Meshes", "Textures", "Materials"];
 
+// Asset type by filename prefix. Prefixes and type names follow the Allar style
+// guide section 1.2 (Asset Name Modifiers), extended with engine conventions the
+// guide predates so real projects get labelled instead of dropped into
+// "unrecognised": NS_, NE_, CS_, IA_, IMC_, DA_, AN_, SC_, NavLink_, and the
+// underscored E_/F_ forms that UE tooling writes. No prefix here is a prefix of
+// any other, so the order of this table does not matter.
+const ASSET_KINDS: &[(&str, &str, &str, &str)] = &[
+    // (filename prefix, colour family, chip label, type name)
+    ("BPFL_", "blueprint", "BPFL", "Blueprint Function Library"),
+    ("BPML_", "blueprint", "BPML", "Blueprint Macro Library"),
+    ("BPI_", "blueprint", "BPI", "Blueprint Interface"),
+    ("TBP_", "blueprint", "TBP", "Tutorial Blueprint"),
+    ("BP_", "blueprint", "BP", "Blueprint"),
+    ("E_", "blueprint", "E", "Enumeration"),
+    ("F_", "blueprint", "F", "Structure"),
+    ("SM_", "mesh", "SM", "Static Mesh"),
+    ("SKEL_", "mesh", "SKEL", "Skeleton"),
+    ("SK_", "mesh", "SK", "Skeletal Mesh"),
+    ("PHYS_", "mesh", "PHYS", "Physics Asset"),
+    ("DM_", "mesh", "DM", "Destructible Mesh"),
+    ("S_", "mesh", "S", "Static Mesh"),
+    ("MPC_", "material", "MPC", "Material Parameter Collection"),
+    ("MI_", "material", "MI", "Material Instance"),
+    ("MF_", "material", "MF", "Material Function"),
+    ("PP_", "material", "PP", "Post Process Material"),
+    ("SP_", "material", "SP", "Subsurface Profile"),
+    ("PM_", "material", "PM", "Physical Material"),
+    ("M_", "material", "M", "Material"),
+    ("RTC_", "texture", "RTC", "Cube Render Target"),
+    ("TC_", "texture", "TC", "Texture Cube"),
+    ("MT_", "texture", "MT", "Media Texture"),
+    ("RT_", "texture", "RT", "Render Target"),
+    ("TLP", "texture", "TLP", "Texture Light Profile"),
+    ("T_", "texture", "T", "Texture"),
+    ("BTDecorator_", "ai", "BTDecorator", "Behavior Tree Decorator"),
+    ("BTService_", "ai", "BTService", "Behavior Tree Service"),
+    ("BTTask_", "ai", "BTTask", "Behavior Tree Task"),
+    ("AIC_", "ai", "AIC", "AI Controller"),
+    ("EQS_", "ai", "EQS", "Environment Query"),
+    ("BT_", "ai", "BT", "Behavior Tree"),
+    ("BB_", "ai", "BB", "Blackboard"),
+    ("ABP_", "animation", "ABP", "Animation Blueprint"),
+    ("AM_", "animation", "AM", "Animation Montage"),
+    ("AO_", "animation", "AO", "Aim Offset"),
+    ("AC_", "animation", "AC", "Animation Composite"),
+    ("BS_", "animation", "BS", "Blend Space"),
+    ("LS_", "animation", "LS", "Level Sequence"),
+    ("CR_", "animation", "CR", "Control Rig"),
+    ("Rig_", "animation", "Rig", "Rig"),
+    ("PFB_", "animation", "PFB", "Paper Flipbook"),
+    ("AN_", "animation", "AN", "Animation Sequence"),
+    ("A_", "animation", "A", "Animation Sequence"),
+    ("MSW_", "audio", "MSW", "Media Sound Wave"),
+    ("ATT_", "audio", "ATT", "Sound Attenuation"),
+    ("Reverb_", "audio", "Reverb", "Reverb Effect"),
+    ("Mix_", "audio", "Mix", "Sound Mix"),
+    ("SC_", "audio", "SC", "Sound Class"),
+    ("WBP_", "ui", "WBP", "Widget Blueprint"),
+    ("Font_", "ui", "Font", "Font"),
+    ("Brush_", "ui", "Brush", "Slate Brush"),
+    ("Style_", "ui", "Style", "Slate Widget Style"),
+    ("PS_", "fx", "PS", "Particle System"),
+    ("NS_", "fx", "NS", "Niagara System"),
+    ("NE_", "fx", "NE", "Niagara Emitter"),
+    ("CS_", "fx", "CS", "Camera Shake"),
+    ("VFA_", "data", "VFA", "Animated Vector Field"),
+    ("SGI_", "data", "SGI", "Substance Graph Instance"),
+    ("SIF_", "data", "SIF", "Substance Instance Factory"),
+    ("NavLink_", "data", "NavLink", "Nav Link Proxy"),
+    ("OL_", "data", "OL", "Object Library"),
+    ("FT_", "data", "FT", "Foliage Type"),
+    ("LG_", "data", "LG", "Landscape Grass Type"),
+    ("LL_", "data", "LL", "Landscape Layer"),
+    ("VF_", "data", "VF", "Static Vector Field"),
+    ("MP_", "data", "MP", "Media Player"),
+    ("DA_", "data", "DA", "Data Asset"),
+    ("DT_", "data", "DT", "Data Table"),
+    ("Curve_", "data", "Curve", "Curve"),
+    ("Matinee_", "data", "Matinee", "Matinee Data"),
+    ("TI_", "data", "TI", "Touch Interface Setup"),
+    ("SPRG_", "data", "SPRG", "Sprite Atlas Group"),
+    ("SPR_", "data", "SPR", "Sprite"),
+    ("SS_", "data", "SS", "Sprite Sheet"),
+    ("TM_", "data", "TM", "Tile Map"),
+    ("TS_", "data", "TS", "Tile Set"),
+    ("CA_", "data", "CA", "Camera Anim"),
+    ("FFE_", "data", "FFE", "Force Feedback Effect"),
+    ("FF_", "data", "FF", "Force Feedback"),
+    ("DV_", "data", "DV", "Dialogue Voice"),
+    ("DW_", "data", "DW", "Dialogue Wave"),
+    ("IA_", "input", "IA", "Input Action"),
+    ("IMC_", "input", "IMC", "Input Mapping Context"),
+];
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct FileEntry {
@@ -37,6 +131,10 @@ struct FileEntry {
     asset: bool,
     // Allar issues for this file, so its own row can be marked.
     issues: Vec<Issue>,
+    // Asset type, for the chip and the colour coding in the UI.
+    type_family: String,
+    type_label: String,
+    type_name: String,
 }
 
 #[derive(Serialize)]
@@ -87,6 +185,65 @@ fn is_asset(name: &str) -> bool {
     }
 }
 
+fn base_name(name: &str) -> &str {
+    match name.rfind('.') {
+        Some(i) => &name[..i],
+        None => name,
+    }
+}
+
+// Classifies a file as (colour family, chip label, type name). Maps are decided
+// by extension; everything else by the Allar section 1.2 filename prefix.
+fn asset_kind(name: &str, asset: bool) -> (&'static str, String, String) {
+    let base = base_name(name);
+    let ext = Path::new(name).extension().and_then(|e| e.to_str()).unwrap_or("");
+
+    if asset && ext.eq_ignore_ascii_case("umap") {
+        return ("level", "MAP".to_string(), "Level / Map".to_string());
+    }
+
+    // Non-asset files are labelled by extension, never by an asset prefix: a
+    // stray "T_notes.txt" is a text file, not a texture.
+    if !asset {
+        if ext.is_empty() {
+            return ("file", "FILE".to_string(), "File".to_string());
+        }
+        let upper = ext.to_ascii_uppercase();
+        return ("file", upper.clone(), format!("{upper} file"));
+    }
+
+    for &(prefix, family, label, type_name) in ASSET_KINDS {
+        if base.starts_with(prefix) {
+            return (family, label.to_string(), type_name.to_string());
+        }
+    }
+
+    // Allar's no-underscore forms: E for enumerations, F or S for structures.
+    if !base.contains('_') && base.len() >= 2 {
+        let mut chars = base.chars();
+        let first = chars.next().unwrap_or(' ');
+        let second = chars.next().unwrap_or(' ');
+        if first.is_ascii_uppercase()
+            && second.is_ascii_uppercase()
+            && base.chars().all(|c| c.is_ascii_alphanumeric())
+        {
+            match first {
+                'E' => return ("blueprint", "E".to_string(), "Enumeration".to_string()),
+                'F' | 'S' => {
+                    return (
+                        "blueprint",
+                        first.to_string(),
+                        "Structure".to_string(),
+                    )
+                }
+                _ => {}
+            }
+        }
+    }
+
+    ("other", "?".to_string(), "Unrecognised prefix".to_string())
+}
+
 fn scan_dir(abs: &Path, name: String) -> std::io::Result<Node> {
     let mut node = Node {
         name,
@@ -113,11 +270,15 @@ fn scan_dir(abs: &Path, name: String) -> std::io::Result<Node> {
         } else if file_type.is_file() {
             let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
             let asset = is_asset(&entry_name);
+            let (type_family, type_label, type_name) = asset_kind(&entry_name, asset);
             node.files.push(FileEntry {
                 name: entry_name,
                 size,
                 asset,
                 issues: Vec::new(),
+                type_family: type_family.to_string(),
+                type_label,
+                type_name,
             });
             node.total += 1;
             node.bytes += size;
@@ -393,4 +554,81 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running the application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::asset_kind;
+
+    fn kind(name: &str, asset: bool) -> (String, String, String) {
+        let (family, label, type_name) = asset_kind(name, asset);
+        (family.to_string(), label, type_name)
+    }
+
+    #[test]
+    fn assets_are_typed_by_prefix() {
+        assert_eq!(kind("T_Rock_D.uasset", true), ("texture".into(), "T".into(), "Texture".into()));
+        assert_eq!(
+            kind("MI_Rock.uasset", true),
+            ("material".into(), "MI".into(), "Material Instance".into())
+        );
+        assert_eq!(kind("M_Rock.uasset", true), ("material".into(), "M".into(), "Material".into()));
+        assert_eq!(kind("S_Rock.uasset", true), ("mesh".into(), "S".into(), "Static Mesh".into()));
+        assert_eq!(kind("BP_Bob.uasset", true), ("blueprint".into(), "BP".into(), "Blueprint".into()));
+        assert_eq!(
+            kind("NS_Fire.uasset", true),
+            ("fx".into(), "NS".into(), "Niagara System".into())
+        );
+        assert_eq!(
+            kind("A_Run.uasset", true),
+            ("animation".into(), "A".into(), "Animation Sequence".into())
+        );
+        assert_eq!(
+            kind("E_Damage.uasset", true),
+            ("blueprint".into(), "E".into(), "Enumeration".into())
+        );
+        assert_eq!(
+            kind("SC_Combat.uasset", true),
+            ("audio".into(), "SC".into(), "Sound Class".into())
+        );
+    }
+
+    #[test]
+    fn maps_are_levels_whatever_their_name() {
+        assert_eq!(
+            kind("Town.umap", true),
+            ("level".into(), "MAP".into(), "Level / Map".into())
+        );
+        assert_eq!(
+            kind("A_Streaming.umap", true),
+            ("level".into(), "MAP".into(), "Level / Map".into())
+        );
+    }
+
+    #[test]
+    fn underscoreless_enum_and_structure_forms() {
+        assert_eq!(
+            kind("EWeaponType.uasset", true),
+            ("blueprint".into(), "E".into(), "Enumeration".into())
+        );
+        assert_eq!(
+            kind("FInventorySlot.uasset", true),
+            ("blueprint".into(), "F".into(), "Structure".into())
+        );
+    }
+
+    #[test]
+    fn unknown_prefixes_and_non_assets() {
+        assert_eq!(
+            kind("AssetZoo_Thing.uasset", true),
+            ("other".into(), "?".into(), "Unrecognised prefix".into())
+        );
+        assert_eq!(kind("notes.txt", false), ("file".into(), "TXT".into(), "TXT file".into()));
+        // an asset prefix on a non-asset file must not win
+        assert_eq!(kind("T_notes.txt", false), ("file".into(), "TXT".into(), "TXT file".into()));
+        assert_eq!(
+            kind("Splash.png", false),
+            ("file".into(), "PNG".into(), "PNG file".into())
+        );
+    }
 }

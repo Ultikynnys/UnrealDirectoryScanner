@@ -15,6 +15,20 @@
   --warn: #ff9d84;
   --warn-bg: #33221d;
   --warn-line: #a4523f;
+  --f-blueprint: #6ea8fe;
+  --f-mesh: #e0a458;
+  --f-material: #b18cf0;
+  --f-texture: #4fc4b0;
+  --f-animation: #7fce6b;
+  --f-audio: #ef8fbe;
+  --f-ai: #8f9cf5;
+  --f-ui: #f08a8a;
+  --f-fx: #f2a65a;
+  --f-data: #6fc0e8;
+  --f-input: #b7d24a;
+  --f-level: #58c8d8;
+  --f-file: #9aa4b2;
+  --f-other: #7b8494;
   --mono: Consolas, "Cascadia Mono", "DejaVu Sans Mono", ui-monospace, monospace;
   --ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --indent: 15px;
@@ -34,6 +48,20 @@
     --warn: #b4231b;
     --warn-bg: #fdece9;
     --warn-line: #e2b0a8;
+    --f-blueprint: #1f5fd0;
+    --f-mesh: #96620f;
+    --f-material: #6a37bd;
+    --f-texture: #0d776a;
+    --f-animation: #2d7a1d;
+    --f-audio: #b23678;
+    --f-ai: #3c46bd;
+    --f-ui: #bf372a;
+    --f-fx: #b15a09;
+    --f-data: #15658c;
+    --f-input: #5c7600;
+    --f-level: #0c6f82;
+    --f-file: #5b6573;
+    --f-other: #5b6573;
   }
 }
 
@@ -310,4 +338,117 @@ body {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   cursor: help;
+}
+
+/* ---- Asset type colours ------------------------------------------------------
+   One hue per family. A `.t-<family>` class on the row sets --tc, and the chip
+   and the asset name both read it, so each family has one source of truth. The
+   chip's tint is mixed from the same hue rather than being a second colour. */
+
+.t-blueprint {
+  --tc: var(--f-blueprint);
+}
+
+.t-mesh {
+  --tc: var(--f-mesh);
+}
+
+.t-material {
+  --tc: var(--f-material);
+}
+
+.t-texture {
+  --tc: var(--f-texture);
+}
+
+.t-animation {
+  --tc: var(--f-animation);
+}
+
+.t-audio {
+  --tc: var(--f-audio);
+}
+
+.t-ai {
+  --tc: var(--f-ai);
+}
+
+.t-ui {
+  --tc: var(--f-ui);
+}
+
+.t-fx {
+  --tc: var(--f-fx);
+}
+
+.t-data {
+  --tc: var(--f-data);
+}
+
+.t-input {
+  --tc: var(--f-input);
+}
+
+.t-level {
+  --tc: var(--f-level);
+}
+
+.t-file,
+.t-other {
+  --tc: var(--f-other);
+}
+
+/* the prefix chip; min-width keeps the asset names in a straight column */
+.type {
+  flex: 0 0 auto;
+  min-width: 30px;
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, var(--tc, var(--fg-dim)) 55%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--tc, var(--fg-dim)) 15%, transparent);
+  color: var(--tc, var(--fg-dim));
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 15px;
+  text-align: center;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.row--leaf .name--leaf {
+  color: var(--tc, var(--fg-dim));
+}
+
+/* type census of the current scan, in the same colours */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 6px 18px 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-dim);
+}
+
+.legend__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.legend__swatch {
+  align-self: center;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--tc, var(--f-other));
+}
+
+.legend__label {
+  color: var(--tc, var(--fg-dim));
+}
+
+.legend__count {
+  font-variant-numeric: tabular-nums;
 }

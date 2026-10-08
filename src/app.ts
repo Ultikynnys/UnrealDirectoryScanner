@@ -13,6 +13,9 @@ interface FileEntry {
   size: number;
   asset: boolean;
   issues: Issue[];
+  typeFamily: string;
+  typeLabel: string;
+  typeName: string;
 }
 
 interface TreeNode {
@@ -58,6 +61,7 @@ const filesEl = byId<HTMLInputElement>('showFiles');
 const lintEl = byId<HTMLInputElement>('lint');
 const issuesEl = byId<HTMLInputElement>('issuesOnly');
 const summaryEl = byId<HTMLParagraphElement>('summary');
+const legendEl = byId<HTMLParagraphElement>('legend');
 const pickEl = byId<HTMLButtonElement>('pick');
 const errorEl = byId<HTMLParagraphElement>('error');
 const loadingEl = byId<HTMLParagraphElement>('loading');
@@ -107,16 +111,25 @@ function issueMarker(issues: Issue[], total: number): HTMLElement {
   return marker;
 }
 
-function renderFile(file: FileEntry): HTMLLIElement {
+/* Assets are always listed; the "all files" toggle adds non-asset files. */
+function visibleFiles(node: TreeNode): FileEntry[] {
+  return filesEl.checked ? node.files : node.files.filter((file) => file.asset);
+}
+
+function renderFile(file: FileEntry, depth: number): HTMLLIElement {
   const li = document.createElement('li');
   li.className = 'node';
   li.dataset.name = file.name.toLowerCase();
 
   const row = document.createElement('div');
-  row.className = 'row row--leaf';
+  row.className = `row row--leaf t-${file.typeFamily}`;
 
   const spacer = document.createElement('span');
   spacer.className = 'caret caret--empty';
+  const chip = document.createElement('span');
+  chip.className = 'type';
+  chip.textContent = file.typeLabel;
+  chip.title = `${file.typeName} (${file.typeLabel} prefix)`;
   const name = document.createElement('span');
   name.className = 'name name--leaf';
   name.textContent = file.name;
@@ -124,9 +137,9 @@ function renderFile(file: FileEntry): HTMLLIElement {
   size.className = 'size';
   size.textContent = formatBytes(file.size);
 
-  row.append(spacer, name, size);
+  row.append(guides(depth), spacer, chip, name, size);
   if (file.issues.length > 0) row.append(issueMarker(file.issues, file.issues.length));
-  row.title = `${file.name}\n${formatBytes(file.size)}${file.asset ? ' - asset' : ' - not an asset'}`;
+  row.title = `${file.name}\n${file.typeName}\n${formatBytes(file.size)}${file.asset ? ' - asset' : ' - not an asset'}`;
   li.append(row);
   return li;
 }
@@ -137,7 +150,8 @@ function renderDir(node: TreeNode, depth: number): HTMLLIElement {
   li.dataset.name = node.name.toLowerCase();
   if (depth <= openBelowDepth) li.classList.add('is-open');
 
-  const expandable = node.children.length > 0 || node.files.length > 0;
+  const files = visibleFiles(node);
+  const expandable = node.children.length > 0 || files.length > 0;
   if (!expandable) li.classList.remove('is-open');
 
   const row = document.createElement('div');
@@ -171,7 +185,7 @@ function renderDir(node: TreeNode, depth: number): HTMLLIElement {
   const children = document.createElement('ul');
   children.className = 'children';
   for (const child of node.children) children.append(renderDir(child, depth + 1));
-  if (filesEl.checked) for (const file of node.files) children.append(renderFile(file));
+  for (const file of files) children.append(renderFile(file, depth + 1));
 
   li.append(row, children);
   return li;
@@ -185,6 +199,7 @@ function render(): void {
     'file',
   )}, ${formatBytes(model.tree.bytes)} - scanned ${new Date(model.scannedAt).toLocaleTimeString()}`;
   renderSummary();
+  renderLegend();
   applyFilter();
 }
 
@@ -214,6 +229,47 @@ function renderSummary(): void {
   summaryEl.textContent = `Allar checks: ${plural(total, 'violation')} - ${parts.join(' | ')}`;
 }
 
+/* Type census of the scan, in the same colours as the chips. */
+function renderLegend(): void {
+  if (!model) return;
+  const counts = new Map<string, { family: string; count: number }>();
+  const walk = (node: TreeNode): void => {
+    for (const file of visibleFiles(node)) {
+      const entry = counts.get(file.typeName);
+      if (entry) entry.count += 1;
+      else counts.set(file.typeName, { family: file.typeFamily, count: 1 });
+    }
+    for (const child of node.children) walk(child);
+  };
+  walk(model.tree);
+
+  if (counts.size === 0) {
+    legendEl.hidden = true;
+    return;
+  }
+
+  const rows = [...counts.entries()].sort(
+    (a, b) => b[1].count - a[1].count || (a[0] < b[0] ? -1 : 1),
+  );
+  const frag = document.createDocumentFragment();
+  for (const [typeName, { family, count }] of rows) {
+    const item = document.createElement('span');
+    item.className = `legend__item t-${family}`;
+    const swatch = document.createElement('span');
+    swatch.className = 'legend__swatch';
+    const label = document.createElement('span');
+    label.className = 'legend__label';
+    label.textContent = typeName;
+    const tally = document.createElement('span');
+    tally.className = 'legend__count';
+    tally.textContent = count.toLocaleString();
+    item.append(swatch, label, tally);
+    frag.append(item);
+  }
+  legendEl.replaceChildren(frag);
+  legendEl.hidden = false;
+}
+
 /* Filtering walks the data, then hides DOM rows, so a folder survives when any
    descendant matches and the path down to it stays open. */
 function filterNode(li: Element, node: TreeNode, query: string): boolean {
@@ -227,14 +283,12 @@ function filterNode(li: Element, node: TreeNode, query: string): boolean {
     const childLi = childLis[index++];
     if (childLi && filterNode(childLi, child, query)) keep = true;
   }
-  if (filesEl.checked) {
-    for (const file of node.files) {
-      const fileLi = childLis[index++];
-      if (!fileLi) continue;
-      const hit = matches(file.name) || (only && file.issues.length > 0);
-      fileLi.classList.toggle('is-hidden', !hit);
-      if (hit) keep = true;
-    }
+  for (const file of visibleFiles(node)) {
+    const fileLi = childLis[index++];
+    if (!fileLi) continue;
+    const hit = matches(file.name) || (only && file.issues.length > 0);
+    fileLi.classList.toggle('is-hidden', !hit);
+    if (hit) keep = true;
   }
 
   li.classList.toggle('is-hidden', !keep);

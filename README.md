@@ -13,13 +13,32 @@ runtime npm dependency; TypeScript is a devDependency only.
 - Native folder picker, or open a folder straight from the command line.
 - Per-folder pills: the asset count when the folder holds assets, otherwise the
   plain file count, so a scripts-only folder never reads as empty.
-- Filter by name, expand/collapse all, and optional listing of non-asset files.
+- Asset files are listed by default and colour-coded by type; **all files** adds
+  non-asset files on top, and the legend is a type census of the scan.
 - Skips noise directories: `.git`, `.svn`, `.hg`, `.vs`, `.idea`, `node_modules`,
   `__pycache__`, `DerivedDataCache`, `Intermediate`, `Saved`, `Binaries`, `Build`,
   `target`, `dist`.
 - Remembers the last folder between runs.
 - Unreadable subfolders are skipped instead of aborting the scan.
 - Allar (Gamemakin UE style guide) directory checks with inline issue markers.
+
+## Asset types
+
+Asset files are always listed, and each is tagged with a prefix chip and a colour
+for its type. The type comes from the filename prefix, which is exactly what the
+style guide's naming convention encodes, so the colours and the checks read the
+same names.
+
+The prefix table follows [Allar 1.2](https://github.com/Allar/ue5-style-guide) and
+adds common engine conventions the guide predates, so real projects get labelled
+instead of landing in "unrecognised": `NS_`, `NE_`, `CS_`, `IA_`, `IMC_`, `DA_`,
+`AN_`, `SC_`, `NavLink_`, and the underscored `E_`/`F_` forms UE tooling writes.
+
+Colour is per **family**, not per prefix, because 80-odd prefixes cannot each get
+a distinguishable colour: blueprint, mesh, material, texture, animation, audio,
+ai, ui, fx, data, input, level, file. The chip carries the exact prefix (hover it
+for the type name), and the legend under the summary is a census of the types in
+the current scan.
 
 ## Allar checks
 
