@@ -60,13 +60,13 @@ const rootEl = byId<HTMLParagraphElement>('root');
 const statsEl = byId<HTMLParagraphElement>('stats');
 const filterEl = byId<HTMLInputElement>('filter');
 const filesEl = byId<HTMLInputElement>('showFiles');
-const namingEl = byId<HTMLDetailsElement>('namingRules');
-const structureEl = byId<HTMLDetailsElement>('structureRules');
+const namingEl = byId<HTMLElement>('namingRules');
+const structureEl = byId<HTMLElement>('structureRules');
 const namingAllEl = byId<HTMLInputElement>('namingAll');
 const structureAllEl = byId<HTMLInputElement>('structureAll');
 
-// Each category pairs its picker with an on/off switch, so the whole category can
-// be checked or cleared in one click without opening the list.
+// Each category is a single control: the rule picker with the switch that checks
+// or clears the whole category sitting inside it.
 const categories = [
   [namingEl, namingAllEl],
   [structureEl, structureAllEl],
@@ -96,11 +96,11 @@ const storageKey = 'unrealDirectoryScanner.path';
 
 let model: Payload | null = null;
 let root = '';
-function ruleBoxes(el: HTMLDetailsElement): HTMLInputElement[] {
-  return [...el.querySelectorAll<HTMLInputElement>('input[type=checkbox]')];
+function ruleBoxes(el: HTMLElement): HTMLInputElement[] {
+  return [...el.querySelectorAll<HTMLInputElement>('.rules__menu input[type=checkbox]')];
 }
 
-function checkedRules(el: HTMLDetailsElement): string[] {
+function checkedRules(el: HTMLElement): string[] {
   return ruleBoxes(el)
     .filter((box) => box.checked)
     .map((box) => box.value);
@@ -116,18 +116,15 @@ function pickedRuleSelection(): string[] | null {
 }
 
 // Nothing picked means the category is off, which the backend is told about.
-function categoryOn(el: HTMLDetailsElement): boolean {
+function categoryOn(el: HTMLElement): boolean {
   return checkedRules(el).length > 0;
 }
 
+// The switch itself shows whether the category is on, so no state text is needed.
 function renderRuleTriggers(): void {
   for (const [el, master] of categories) {
     const boxes = ruleBoxes(el);
     const on = boxes.filter((box) => box.checked).length;
-    const state = el.querySelector('.rules__state');
-    if (state) {
-      state.textContent = on === 0 ? 'off' : on === boxes.length ? 'all' : `${on}/${boxes.length}`;
-    }
     master.checked = on > 0;
     master.indeterminate = on > 0 && on < boxes.length;
   }
@@ -267,7 +264,8 @@ function render(): void {
 }
 
 /* The rule-by-rule breakdown answers "what is wrong" without opening the tree.
-   Naming and structure get a line each, so one category cannot hide the other. */
+   Naming and structure get a line each, coloured apart, so one cannot hide the
+   other. */
 function renderSummary(): void {
   if (!model) return;
   summaryEl.hidden = false;
@@ -281,7 +279,7 @@ function renderSummary(): void {
             ? 'every rule is switched off.'
             : 'no Unreal project detected in this folder.'
         }`,
-        true,
+        'summary--clean',
       ),
     );
     return;
@@ -305,13 +303,16 @@ function renderSummary(): void {
       : total === 0
         ? 'no violations'
         : `${plural(total, 'violation')} - ${parts.join(' | ')}`;
-    summaryEl.append(summaryLine(`${category} checks: ${body}`, !enabled || total === 0));
+    const clean = !enabled || total === 0;
+    summaryEl.append(
+      summaryLine(`${category} checks: ${body}`, clean ? 'summary--clean' : `summary--${category}`),
+    );
   }
 }
 
-function summaryLine(text: string, clean: boolean): HTMLParagraphElement {
+function summaryLine(text: string, modifier: string): HTMLParagraphElement {
   const line = document.createElement('p');
-  line.className = clean ? 'summary summary--clean' : 'summary';
+  line.className = `summary ${modifier}`;
   line.textContent = text;
   return line;
 }
@@ -480,15 +481,17 @@ function applyRulesChange(): void {
 }
 
 for (const [el, master] of categories) {
+  const picker = el.querySelector('details');
   master.addEventListener('change', () => {
     for (const box of ruleBoxes(el)) box.checked = master.checked;
     applyRulesChange();
   });
   el.addEventListener('change', applyRulesChange);
-  el.addEventListener('toggle', () => {
-    if (!el.open) return;
+  picker?.addEventListener('toggle', () => {
+    if (!picker.open) return;
     for (const [other] of categories) {
-      if (other !== el) other.open = false;
+      const otherPicker = other.querySelector('details');
+      if (otherPicker && otherPicker !== picker) otherPicker.open = false;
     }
   });
 }

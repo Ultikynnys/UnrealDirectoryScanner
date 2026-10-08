@@ -27,38 +27,42 @@
         <label class="toggle" title="also list non-asset files (scripts, images, configs)">
           <input type="checkbox" id="showFiles" /> all files
         </label>
-        <label class="toggle" title="check or clear every naming rule at once">
-          <input type="checkbox" id="namingAll" checked /> naming
-        </label>
-        <details class="rules" id="namingRules">
-          <summary class="btn" title="asset naming: a recognised prefix, a PascalCase base name, two-digit variants">
-            rules <span class="rules__state">all</span>
-          </summary>
-          <div class="rules__menu">
-            <label class="rules__item"><input type="checkbox" value="1.1" checked /> 1.1 base name</label>
-            <label class="rules__item"><input type="checkbox" value="00.1" checked /> 00.1 characters</label>
-          </div>
-        </details>
+        <div class="rules" id="namingRules">
+          <details>
+            <summary class="btn" title="asset naming: a recognised prefix, a PascalCase base name, two-digit variants">
+              naming
+            </summary>
+            <div class="rules__menu">
+              <label class="rules__item"><input type="checkbox" value="1.1" checked /> 1.1 base name</label>
+              <label class="rules__item"><input type="checkbox" value="00.1" checked /> 00.1 characters</label>
+            </div>
+          </details>
+          <label class="toggle" title="check or clear every naming rule at once">
+            <input type="checkbox" id="namingAll" checked aria-label="every naming rule" />
+          </label>
+        </div>
 
-        <label class="toggle" title="check or clear every structure rule at once">
-          <input type="checkbox" id="structureAll" checked /> structure
-        </label>
-        <details class="rules" id="structureRules">
-          <summary class="btn" title="content directory structure: folder names, type folders, map and material placement">
-            rules <span class="rules__state">all</span>
-          </summary>
-          <div class="rules__menu">
-            <label class="rules__item"><input type="checkbox" value="2.1.1" checked /> 2.1.1 folder case</label>
-            <label class="rules__item"><input type="checkbox" value="2.1.2" checked /> 2.1.2 folder spaces</label>
-            <label class="rules__item"><input type="checkbox" value="2.1.3" checked /> 2.1.3 folder characters</label>
-            <label class="rules__item"><input type="checkbox" value="2.2.1" checked /> 2.2.1 global asset</label>
-            <label class="rules__item"><input type="checkbox" value="2.4" checked /> 2.4 map placement</label>
-            <label class="rules__item"><input type="checkbox" value="2.6.1" checked /> 2.6.1 Assets folder</label>
-            <label class="rules__item"><input type="checkbox" value="2.6.2" checked /> 2.6.2 type folder</label>
-            <label class="rules__item"><input type="checkbox" value="2.8" checked /> 2.8 base material</label>
-            <label class="rules__item"><input type="checkbox" value="2.9" checked /> 2.9 empty folder</label>
-          </div>
-        </details>
+        <div class="rules" id="structureRules">
+          <details>
+            <summary class="btn" title="content directory structure: folder names, type folders, map and material placement">
+              structure
+            </summary>
+            <div class="rules__menu">
+              <label class="rules__item"><input type="checkbox" value="2.1.1" checked /> 2.1.1 folder case</label>
+              <label class="rules__item"><input type="checkbox" value="2.1.2" checked /> 2.1.2 folder spaces</label>
+              <label class="rules__item"><input type="checkbox" value="2.1.3" checked /> 2.1.3 folder characters</label>
+              <label class="rules__item"><input type="checkbox" value="2.2.1" checked /> 2.2.1 global asset</label>
+              <label class="rules__item"><input type="checkbox" value="2.4" checked /> 2.4 map placement</label>
+              <label class="rules__item"><input type="checkbox" value="2.6.1" checked /> 2.6.1 Assets folder</label>
+              <label class="rules__item"><input type="checkbox" value="2.6.2" checked /> 2.6.2 type folder</label>
+              <label class="rules__item"><input type="checkbox" value="2.8" checked /> 2.8 base material</label>
+              <label class="rules__item"><input type="checkbox" value="2.9" checked /> 2.9 empty folder</label>
+            </div>
+          </details>
+          <label class="toggle" title="check or clear every structure rule at once">
+            <input type="checkbox" id="structureAll" checked aria-label="every structure rule" />
+          </label>
+        </div>
         <label class="toggle" title="hide rows that have no issues">
           <input type="checkbox" id="issuesOnly" /> issues only
         </label>

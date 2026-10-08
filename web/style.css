@@ -19,6 +19,9 @@
   --ctl-hover: #eef1f5;
   --warn: #b4231b;
   --warn-bg: #fdece9;
+  /* the two rule categories, wherever they are reported */
+  --structure: #b4231b;
+  --naming: #7a3cb8;
   --f-blueprint: #1f5fd0;
   --f-mesh: #96620f;
   --f-material: #6a37bd;
@@ -54,6 +57,8 @@
   --ctl-hover: #2c313a;
   --warn: #ff9d84;
   --warn-bg: #33221d;
+  --structure: #ff9d84;
+  --naming: #c9a2f2;
   --f-blueprint: #6ea8fe;
   --f-mesh: #e0a458;
   --f-material: #b18cf0;
@@ -212,8 +217,16 @@ body {
   gap: 2px;
 }
 
-/* rule pickers: a flat trigger that opens a checkbox list, so several rules of
-   one category can be on at once */
+/* structure reads red, naming purple, matching how the two are spoken about.
+   The class is doubled so it outranks the base .summary rule wherever that sits. */
+.summary.summary--structure {
+  color: var(--structure);
+}
+
+.summary.summary--naming {
+  color: var(--naming);
+}
+
 /* toolbar wording is chrome rather than content: dragging across it should not
    start a text selection */
 .btn,
@@ -222,21 +235,27 @@ body {
   user-select: none;
 }
 
+/* rule pickers: one control per category, the rule list plus the switch that
+   turns the whole category on or off */
 .rules {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px 2px 4px;
+  background: var(--ctl);
 }
 
-.rules > summary {
+/* the summary is the label half of that control, so it carries no surface */
+.rules > details > summary {
+  padding: 0;
+  background: transparent;
   cursor: pointer;
   list-style: none;
 }
 
-.rules > summary::-webkit-details-marker {
+.rules > details > summary::-webkit-details-marker {
   display: none;
-}
-
-.rules__state {
-  color: var(--fg-dim);
 }
 
 .rules__menu {
