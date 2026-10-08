@@ -139,6 +139,29 @@ unreal-directory-scanner <path>
 
 A path given on the command line takes priority over the remembered folder.
 
+## Command line
+
+The same binary runs the checks headlessly, which is what a script or a CI job
+wants:
+
+```sh
+unreal-directory-scanner --check ./MyProject/Content
+unreal-directory-scanner --check ./MyProject/Content --structure
+unreal-directory-scanner --check ./MyProject/Content --rules 1.1,2.8
+```
+
+Every violation prints as `rule <tab> path <tab> message`, the path being relative
+to the folder being checked, so the output greps and diffs cleanly. The summary
+goes to standard error instead, leaving standard output pipeable. The exit status
+is `0` when nothing was found, `1` when something was, and `2` for bad usage, so a
+CI step fails on its own. `--help` lists the options and every rule id, and
+`--rules` rejects an id it does not know.
+
+One Windows caveat: the release build declares the Windows GUI subsystem, so it
+has no console to print an interactive run to. Output still reaches a pipe or a
+file - which is how a CI job or `--check ... > report.txt` uses it - and the debug
+build and `cargo run` print to the terminal as usual.
+
 ## Layout
 
 ```

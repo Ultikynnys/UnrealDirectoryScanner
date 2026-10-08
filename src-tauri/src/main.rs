@@ -6,6 +6,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
 
+mod cli;
+
 const ASSET_EXT: [&str; 2] = ["uasset", "umap"];
 
 // Directories that never hold project content (VCS, caches, build output).
@@ -675,6 +677,13 @@ fn default_directory() -> String {
 }
 
 fn main() {
+    // `--check` runs the same checks as a one-shot report and exits, so the binary is
+    // usable from a script; anything else opens the window.
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if let Some(code) = cli::run(&args) {
+        std::process::exit(code);
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
