@@ -4,7 +4,7 @@
   "version": "0.2.0",
   "description": "Scan any directory and explore its Unreal asset tree",
   "scripts": {
-    "build:web": "tsc && node scripts/build-web.mjs",
+    "build:web": "tsc",
     "dev": "npm run build:web && tauri dev",
     "build": "tauri build",
     "tauri": "tauri"

@@ -8,7 +8,7 @@
     "noImplicitReturns": true,
     "forceConsistentCasingInFileNames": true,
     "rootDir": "src",
-    "outDir": "dist",
+    "outDir": "web",
     "skipLibCheck": true
   },
   "include": ["src/**/*.ts"]
