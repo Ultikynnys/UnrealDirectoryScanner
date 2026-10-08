@@ -214,6 +214,14 @@ body {
 
 /* rule pickers: a flat trigger that opens a checkbox list, so several rules of
    one category can be on at once */
+/* toolbar wording is chrome rather than content: dragging across it should not
+   start a text selection */
+.btn,
+.toggle,
+.rules__item {
+  user-select: none;
+}
+
 .rules {
   position: relative;
 }
