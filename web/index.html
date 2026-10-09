@@ -27,14 +27,47 @@
         <label class="toggle" title="also list non-asset files (scripts, images, configs)">
           <input type="checkbox" id="showFiles" /> all files
         </label>
+        <div class="rules" id="guideRules">
+          <details>
+            <summary class="btn" id="guideSummary" title="the style guide whose rules the checks follow">
+              guide
+            </summary>
+            <div class="rules__menu" id="guideMenu">
+              <div id="guidePresets"></div>
+              <div class="preset">
+                <input
+                  id="presetName"
+                  class="preset__name"
+                  type="text"
+                  placeholder="save as preset"
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-label="name for the new preset"
+                />
+                <button
+                  class="preset__action"
+                  id="presetSave"
+                  type="button"
+                  title="write these rules to a preset file beside the executable"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </details>
+          <a class="rules__docs" id="guideDocs" target="_blank" rel="noreferrer" hidden>guidelines</a>
+        </div>
+
         <div class="rules" id="namingRules">
           <details>
             <summary class="btn" title="asset naming: a recognised prefix, a PascalCase base name, two-digit variants">
               naming
             </summary>
             <div class="rules__menu">
-              <label class="rules__item"><input type="checkbox" value="1.1" checked /> 1.1 base name</label>
               <label class="rules__item"><input type="checkbox" value="00.1" checked /> 00.1 characters</label>
+              <label class="rules__item"><input type="checkbox" value="00.2" /> 00.2 windows names</label>
+              <label class="rules__item"><input type="checkbox" value="00.3" checked /> 00.3 PascalCase</label>
+              <label class="rules__item"><input type="checkbox" value="1.1" checked /> 1.1 base name</label>
             </div>
           </details>
           <label class="toggle" title="check or clear every naming rule at once">
@@ -48,19 +81,34 @@
               structure
             </summary>
             <div class="rules__menu">
-              <label class="rules__item"><input type="checkbox" value="2.1.1" checked /> 2.1.1 folder case</label>
               <label class="rules__item"><input type="checkbox" value="2.1.2" checked /> 2.1.2 folder spaces</label>
               <label class="rules__item"><input type="checkbox" value="2.1.3" checked /> 2.1.3 folder characters</label>
+              <label class="rules__item"><input type="checkbox" value="2.1.4" /> 2.1.4 folder case clash</label>
               <label class="rules__item"><input type="checkbox" value="2.2.1" checked /> 2.2.1 global asset</label>
               <label class="rules__item"><input type="checkbox" value="2.4" checked /> 2.4 map placement</label>
               <label class="rules__item"><input type="checkbox" value="2.6.1" checked /> 2.6.1 Assets folder</label>
               <label class="rules__item"><input type="checkbox" value="2.6.2" checked /> 2.6.2 type folder</label>
+              <label class="rules__item"><input type="checkbox" value="2.6.3" /> 2.6.3 type folder (extended)</label>
               <label class="rules__item"><input type="checkbox" value="2.8" checked /> 2.8 base material</label>
               <label class="rules__item"><input type="checkbox" value="2.9" checked /> 2.9 empty folder</label>
             </div>
           </details>
           <label class="toggle" title="check or clear every structure rule at once">
             <input type="checkbox" id="structureAll" checked aria-label="every structure rule" />
+          </label>
+        </div>
+
+        <div class="rules" id="associationRules">
+          <details>
+            <summary class="btn" title="association: an asset and what it references belong in one folder or one inside the other">
+              association
+            </summary>
+            <div class="rules__menu">
+              <label class="rules__item"><input type="checkbox" value="3.1" /> 3.1 association</label>
+            </div>
+          </details>
+          <label class="toggle" title="check or clear every association rule at once">
+            <input type="checkbox" id="associationAll" aria-label="every association rule" />
           </label>
         </div>
         <label class="toggle" title="hide rows that have no issues">

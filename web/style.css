@@ -89,6 +89,8 @@ body {
   color: var(--fg);
   font-family: var(--ui);
   text-shadow: var(--text-shadow);
+  /* nothing but an asset or folder name is worth selecting */
+  user-select: none;
   font-size: 14px;
 }
 
@@ -240,12 +242,10 @@ body {
   background: var(--naming-bg);
 }
 
-/* toolbar wording is chrome rather than content: dragging across it should not
-   start a text selection */
-.btn,
-.toggle,
-.rules__item {
-  user-select: none;
+/* the name is the one piece of tree text worth selecting; the rest of a row - its
+   tags, count, size and type chip - is chrome, as is the whole toolbar */
+.name {
+  user-select: text;
 }
 
 /* rule pickers: one control per category, the rule list plus the switch that
@@ -291,6 +291,87 @@ body {
   align-items: center;
   gap: 6px;
   cursor: pointer;
+}
+
+/* the preset rows sit in their own box only so that the save row below them survives a
+   re-render; `contents` keeps them in the menu's own flex column */
+#guidePresets {
+  display: contents;
+}
+
+/* the box at the bottom of the picker that writes the rules ticked now out as a new preset */
+.preset {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.preset__name {
+  width: 108px;
+  padding: 2px 5px;
+  background: var(--ctl);
+  color: inherit;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 11px;
+}
+
+.preset__name:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+/* saving over a preset and deleting one both throw away what was there, so both take two
+   clicks: the first arms the control and the second carries it out */
+.preset__actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.preset__action {
+  padding: 1px 6px;
+  background: var(--ctl-hover);
+  color: inherit;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.preset__action:hover {
+  border-color: var(--accent);
+}
+
+.preset__action:disabled {
+  opacity: 0.4;
+  border-color: transparent;
+  cursor: default;
+}
+
+.preset__action--armed {
+  border-color: var(--naming);
+  background: var(--naming-bg);
+  color: var(--naming);
+}
+
+/* the picked guide's documentation. A real link, so the URL shows on hover and can be
+   copied, but the click is claimed by script rather than navigating the webview. */
+.rules__docs {
+  color: var(--accent);
+  font-size: 11px;
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+  cursor: pointer;
+}
+
+.rules__docs:hover {
+  background: var(--accent-soft);
+}
+
+.rules__docs[hidden] {
+  display: none;
 }
 
 .tree,

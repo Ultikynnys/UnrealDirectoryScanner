@@ -7,7 +7,8 @@
     "build:web": "tsc",
     "dev": "npm run build:web && tauri dev",
     "build": "tauri build",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "prepare": "node .githooks/install.mjs"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.12.1",

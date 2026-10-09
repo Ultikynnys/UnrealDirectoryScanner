@@ -1,0 +1,4 @@
+# Hook scripts must keep LF endings. With core.autocrlf on, a checkout would otherwise
+# rewrite the shebang as "#!/bin/sh\r", which sh cannot resolve, and the hook would stop
+# running without saying so.
+.githooks/* text eol=lf

@@ -1,0 +1,25 @@
+#!/bin/sh
+# Pre-commit autotests: the Rust suite, then the frontend compile, so a commit cannot
+# land with a failing check or a file that does not build.
+#
+# Committed rather than left in .git/hooks so it travels with the repository. `npm
+# install` points git at it through the prepare script; by hand it is:
+#   git config core.hooksPath .githooks
+# On Unix, install.mjs also sets the executable bit, which git for Windows does not track.
+set -e
+
+# Fail closed, with a message: a commit whose checks could not run is not one to make.
+for tool in cargo npm; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    echo "pre-commit: $tool is not on PATH, so the checks cannot run" >&2
+    exit 1
+  fi
+done
+
+echo "pre-commit: cargo test"
+cargo test --quiet --manifest-path src-tauri/Cargo.toml
+
+# The compile, not just a typecheck: web/app.js is gitignored, so emitting it cannot dirty
+# a commit, and this is the same command `npm run build` runs.
+echo "pre-commit: build the web assets"
+npm run --silent build:web
